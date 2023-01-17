@@ -1,0 +1,43 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# Object detection app START #####################################
+# OpenCV installation is needed for Object-detection
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -q -y                          \
+        ros-${ROS_DISTRO}-cv-bridge                                                                                         \
+        ros-${ROS_DISTRO}-image-geometry                                                                                    \
+        ros-${ROS_DISTRO}-image-transport                                                                                   \
+        libgflags-dev                                                                                                       \
+        libboost-all-dev                                                                                                    \
+    && source ${ROS_INSTALL_DIR}/setup.bash                                                                                 \
+    && source /opt/intel/openvino/bin/setupvars.sh                                                                          \
+    && mkdir ${WORKSPACE_DIR}/omz                                                                                           \
+    && cd ${WORKSPACE_DIR}/omz                                                                                              \
+    && cmake -DCMAKE_BUILD_TYPE=Release /opt/intel/openvino_2021/deployment_tools/open_model_zoo/demos                      \
+    && cmake --build . -j4                                                                                                  \
+    && cd ${WORKSPACE_DIR}/object_detection/src                                                                             \
+    && colcon build --cmake-clean-first --packages-select object_detection --install-base ./prebuilt_object_detection       \
+        --cmake-args -DCMAKE_PREFIX_PATH=${WORKSPACE_DIR}/omz/intel64/Release/lib/                                          \
+        -DOPEN_ZOO_HEADERS=/opt/intel/openvino_2021/deployment_tools/open_model_zoo/demos/common/cpp/ -DBUILD_TESTING=OFF   \
+        -DOPENCV_AMR_VER=${OPENCV_VERSION}                                                                                  \
+    && rm -rf build log
+################################# Object detection app END #####################################

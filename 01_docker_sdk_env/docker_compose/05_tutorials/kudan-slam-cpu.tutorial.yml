@@ -1,0 +1,41 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  kudan-slam:
+    image: ${REPO_URL}amr-kudan-slam:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}kudan-slam
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: kudan-slam
+    volumes:
+      - ../../artifacts/01_amr/amr_generic/config:/tmp/ug_configs
+    restart: "no"
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    group_add:
+      - 109
+    # We enter into bash shell of docker-container
+    command:
+    - |
+      sudo cp ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/launch/kdvisual_ros2_rgbd_realsense_launch.py ../ros2_ws/install/kdvisual_ros2/share/kdvisual_ros2/launch/
+      sudo cp ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/param/kdvisual_params.yaml ../ros2_ws/install/kdvisual_ros2/share/kdvisual_ros2/config/params.yaml
+      sudo cp ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/calib/realsense_d435.ini ../ros2_ws/install/kdvisual_ros2/share/kdvisual_ros2/calib/
+      export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      export INTEL_GPU_ORB_LIB=/home/eiforamr/workspace/lib/orb_extractor/lib
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/eiforamr/workspace/lib/orb_extractor/lib/
+      source /home/eiforamr/workspace/ros_entrypoint.sh
+      ros2 bag play ${CONTAINER_BASE_PATH}/01_docker_sdk_env/docker_compose/06_bags/robot_moving_15fps &
+      sleep 2
+      ros2 launch kdvisual_ros2 kdvisual_ros2_rgbd_realsense_launch.py gpu_feature_extractor:=false max_features:=2000 &
+      rviz2 -d ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/config/kdvisual_ros2_rgbd.rviz
+

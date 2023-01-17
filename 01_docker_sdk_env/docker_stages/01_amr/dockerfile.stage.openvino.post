@@ -1,0 +1,84 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# OPENVINO dependencies START #####################################
+ARG TEMP_DIR=/tmp/openvino_installer
+ARG COMPUTE_RUNTIME_URL="https://github.com/intel/compute-runtime/releases/download"
+ARG IGC_URL="https://github.com/intel/intel-graphics-compiler/releases/download"
+ENV INTEL_OPENVINO_DIR /opt/intel/openvino
+
+WORKDIR ${TEMP_DIR}
+# hadolint ignore=DL3008
+RUN if [ "${OPENVINO_PACKAGE_TYPE}" == "dev" ] ;                                                                                \
+        then echo -e "# TensorFlow 1.x and 2.x are incompatible, use separate virtual environments for each version"            \
+        "\ntensorflow>=1.15.2,<2.0; python_version < \"3.8\""                                                                   \
+        "\ntensorflow>=2.0; python_version >= \"3.8\""                                                                          \
+        "\nnetworkx~=2.5"                                                                                                       \
+        "\nnumpy>=1.16.6,<1.19"                                                                                                 \
+        "\ntest-generator==0.1.1"                                                                                               \
+        "\ndefusedxml>=0.7.1"                                                                                                   \
+        "\nrequests>=2.25.1"                                                                                                    \
+        "\nonnx>=1.8.1" | tee ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/requirements_tf.txt ; fi                   \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive                                                                         \
+        apt-get install -y --no-install-recommends                                                                              \
+            python3-tk                                                                                                          \
+            ocl-icd-libopencl1                                                                                                  \
+            ocl-icd-opencl-dev                                                                                                  \
+            opencl-clhpp-headers                                                                                                \
+            x11-utils                                                                                                           \
+            libva-glx2                                                                                                          \
+            vainfo                                                                                                              \
+            libva-x11-2                                                                                                         \
+            libva-dev                                                                                                           \
+            libdrm-dev xorg xorg-dev openbox libx11-dev                                                                         \
+            libgl1-mesa-glx                                                                                                     \
+            libgl1-mesa-dev                                                                                                     \
+            libgstreamer1.0-dev                                                                                                 \
+            libgstreamer-plugins-bad1.0-dev                                                                                     \
+            gstreamer1.0-vaapi                                                                                                  \
+    && curl -L                                                                                                                  \
+        "${COMPUTE_RUNTIME_URL}/${INTEL_COMPUTE_RUNTIME_VERSION}/libigdgmm12_${INTEL_GMMLIB_VERSION}_amd64.deb"                 \
+        --output "libigdgmm12_${INTEL_GMMLIB_VERSION}_amd64.deb"                                                                \
+    && curl -L                                                                                                                  \
+        "${COMPUTE_RUNTIME_URL}/${INTEL_COMPUTE_RUNTIME_VERSION}/intel-opencl-icd_${INTEL_COMPUTE_RUNTIME_VERSION}_amd64.deb"   \
+        --output "intel-opencl-icd_${INTEL_COMPUTE_RUNTIME_VERSION}_amd64.deb"                                                  \
+    && curl -L                                                                                                                  \
+        "${COMPUTE_RUNTIME_URL}/${INTEL_COMPUTE_RUNTIME_VERSION}/intel-level-zero-gpu_${INTEL_ZERO_GPU_VERSION}_amd64.deb"      \
+        --output "intel-level-zero-gpu_${INTEL_ZERO_GPU_VERSION}_amd64.deb"                                                     \
+    && curl -L                                                                                                                  \
+        "${IGC_URL}/igc-${INTEL_GRAPHICS_COMPILER_VERSION}/intel-igc-core_${INTEL_GRAPHICS_COMPILER_VERSION}_amd64.deb"         \
+        --output "intel-igc-core_${INTEL_GRAPHICS_COMPILER_VERSION}_amd64.deb"                                                  \
+    && curl -L                                                                                                                  \
+        "${IGC_URL}/igc-${INTEL_GRAPHICS_COMPILER_VERSION}/intel-igc-opencl_${INTEL_GRAPHICS_COMPILER_VERSION}_amd64.deb"       \
+        --output "intel-igc-opencl_${INTEL_GRAPHICS_COMPILER_VERSION}_amd64.deb"                                                \
+    && echo "${INTEL_OPENVINO_DIR}/deployment_tools/ngraph/lib/" >> /etc/ld.so.conf.d/intel-mdf.conf                            \
+    && echo "${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/lib/intel64/" >> /etc/ld.so.conf.d/intel-mdf.conf          \
+    && dpkg -i ${TEMP_DIR}/*.deb                                                                                                \
+    && ldconfig                                                                                                                 \
+    && cd ${INTEL_OPENVINO_DIR}/install_dependencies                                                                            \
+    && ./install_openvino_dependencies.sh -y                                                                                    \
+    && if [ "${OPENVINO_PACKAGE_TYPE}" == "dev" ] ;                                                                             \
+        then cd ${INTEL_OPENVINO_DIR}/deployment_tools/model_optimizer/install_prerequisites ;                                  \
+        ./install_prerequisites_tf.sh ; fi                                                                                      \
+    && rm -rf ${TEMP_DIR}                                                                                                       \
+    && rm -rf /var/lib/apt/lists/*
+################################# OpenVINO dependencies END ######################################

@@ -1,0 +1,41 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# ROS2 OpenVINO Wrapper app START #####################################
+WORKDIR ${ROS2_WS}/src
+
+RUN git clone ${ROS2_OPENVINO_TOOLKIT_REPO_URL} ros2_openvino_toolkit                                   \
+    && cd ros2_openvino_toolkit                                                                         \
+    && git checkout ${ROS2_OPENVINO_TOOLKIT_COMMIT_ID}                                                  \
+    && cd ${ROS2_WS}/src                                                                                \
+    && git clone ${ROS2_OBJECT_MSGS_REPO_URL} ros2_object_msgs                                          \
+    && cd ros2_object_msgs                                                                              \
+    && git checkout ${ROS2_OBJECT_MSGS_COMMIT_ID}                                                       \
+    && cd ${ROS2_WS}                                                                                    \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -q -y   \
+        ros-${ROS_DISTRO}-diagnostic-updater                                                            \
+    && source ${ROS_INSTALL_DIR}/setup.bash                                                             \
+    && source /opt/intel/openvino/bin/setupvars.sh                                                      \
+    && colcon build                                                                                     \
+    && rm -rf ${ROS2_WS}/build/* ${ROS2_WS}/log/*                                                       \
+    && rm -rf /var/lib/apt/lists/*
+################################## ROS2 OpenVINO Wrapper app END ######################################

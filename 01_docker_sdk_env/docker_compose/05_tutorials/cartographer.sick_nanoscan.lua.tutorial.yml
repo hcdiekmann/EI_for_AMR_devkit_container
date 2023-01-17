@@ -1,0 +1,54 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  sick-nanoscan:
+    image: ${REPO_URL}amr-sick-nanoscan:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}sick-nanoscan
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: sick-nanoscan
+    environment:
+      SICK_NANOSCAN_IP: "${SICK_NANOSCAN_IP:?                                                                       \
+                          \n\n\n\n!!!!!!!!ERROR:                                                                    \
+                          \n SICK_NANOSCAN_IP is used as parameter while launching ros2 node sick_safetyscanners2.  \
+                          \n Please define it to a given valid value from test setup.                               \
+                          \n Example:                                                                               \
+                          \n    export SICK_NANOSCAN_IP=127.0.0.2\n\n\n\n                                           \
+                        }"
+      HOST_IP:  "${HOST_IP:?                                                                        \
+                  \n\n\n\n!!!!!!!!ERROR:                                                            \
+                  \n HOST_IP is used as parameter while launching ros2 node sick_safetyscanners2.   \
+                  \n Please define it to a given valid value from test setup.                       \
+                  \n Example:                                                                       \
+                  \n    export HOST_IP=127.0.0.1\n\n\n\n                                            \
+                }"
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source /home/eiforamr/workspace/ros_entrypoint.sh
+       sudo sed -i 's/"sensor_ip": ".*",/"sensor_ip": "${SICK_NANOSCAN_IP}",/g' /opt/ros/foxy/share/sick_safetyscanners2/launch/sick_safetyscanners2_launch.py
+       sudo sed -i 's/"host_ip": ".*",/"host_ip": "${HOST_IP}",/g' /opt/ros/foxy/share/sick_safetyscanners2/launch/sick_safetyscanners2_launch.py
+       cat /opt/ros/foxy/share/sick_safetyscanners2/launch/sick_safetyscanners2_launch.py
+       ros2 launch sick_safetyscanners2 sick_safetyscanners2_launch.py &
+       rviz2
+
+  cartographer:
+    image: ${REPO_URL}amr-cartographer:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}cartographer
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: cartographer
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source /home/eiforamr/workspace/ros_entrypoint.sh
+       ls -al ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/config/cartographer/sick_nanoscan.lua
+       ros2 run cartographer_ros cartographer_node -configuration_directory ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/config/cartographer -configuration_basename sick_nanoscan.lua

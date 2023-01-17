@@ -1,0 +1,42 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# NAV2 app START #####################################
+# Note: We need to manually build Nav stack in order to apply the patch for this issue https://github.com/ros2/ros2/issues/1074
+WORKDIR ${ROS2_WS}
+RUN git clone -b ${ROS_DISTRO}-devel ${NAVIGATION2_REPO_URI} src/navigation2
+COPY artifacts/01_amr/nav2/* src/navigation2/
+COPY artifacts/01_amr/amr_its_planner/install/its_planner ${ROS2_WS}/install/its_planner
+RUN chmod +x -R ${ROS2_WS}/install/its_planner                                      \
+    && cd src/navigation2                                                           \
+    && git checkout ${NAVIGATION2_COMMIT_ID}                                        \
+    && git apply 0001-Catch-send_goal-failed-exception.patch                        \
+    && git apply 0001-Fix-action-node-in-endless-loop.patch                         \
+    && git apply 0001-Wait-for-valid-costmap-before-computing-trajectory.patch      \
+    && git apply 0001-Backport-fix-for-straight-path-issue.patch                    \
+    && cd ${ROS2_WS}                                                                \
+    && apt-get update                                                               \
+    && rosdep update                                                                \
+    && rosdep install -i --from-path src/navigation2 --rosdistro $ROS_DISTRO -y     \
+    && source ${ROS_INSTALL_DIR}/setup.bash && colcon build                         \
+    && rm -rf ${ROS2_WS}/build/* ${ROS2_WS}/src/* ${ROS2_WS}/log/*
+################################# NAV2 app END #####################################

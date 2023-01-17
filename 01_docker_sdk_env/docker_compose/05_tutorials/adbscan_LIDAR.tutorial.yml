@@ -1,0 +1,49 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  rplidar:
+    image: ${REPO_URL}amr-rplidar:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}rplidar
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: rplidar
+    environment:
+      RPLIDAR_SERIAL_PORT:  "${RPLIDAR_SERIAL_PORT:?                                                          \
+                              \n\n\n\n!!!!!!!!ERROR:                                                          \
+                              \n RPLIDAR_SERIAL_PORT is used as parameter while launching ros2 node rplidar.  \
+                              \n Please define it to a given valid value from test setup.                     \
+                              \n Example:                                                                     \
+                              \n    export RPLIDAR_SERIAL_PORT=/dev/ttyUSB1\n\n\n\n                           \
+                            }"
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source /home/eiforamr/workspace/ros_entrypoint.sh
+       sudo sed -i "s~LaunchConfiguration('serial_port', default='/dev/ttyUSB0')~LaunchConfiguration('serial_port', default='${RPLIDAR_SERIAL_PORT}')~g" ../ros2_ws/install/rplidar_ros2/share/rplidar_ros2/launch/view_rplidar_a3_launch.py
+       cat ../ros2_ws/install/rplidar_ros2/share/rplidar_ros2/launch/view_rplidar_a3_launch.py
+       ros2 launch rplidar_ros2 view_rplidar_a3_launch.py
+
+  adbscan:
+    image: ${REPO_URL}amr-adbscan:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}adbscan
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: adbscan
+    depends_on:
+      - rplidar
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source ros_entrypoint.sh
+       source /home/eiforamr/workspace/source_prebuilt_components.sh
+       # Start adbscan application with LIDAR as point cloud source
+       ros2 run adbscan_ros2 adbscan_sub --ros-args --params-file ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/param/adbscan_2D_params.yaml

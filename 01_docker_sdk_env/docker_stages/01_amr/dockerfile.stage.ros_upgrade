@@ -1,0 +1,50 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# Upgrading ROS packages START #####################################
+ENV PYTHON_VER python3.8
+RUN apt-get update && apt-get upgrade --no-install-recommends -q -y     \
+        ros-${ROS_DISTRO}-ros-base                                      \
+        ros-${ROS_DISTRO}-ros-core                                      \
+        ros-${ROS_DISTRO}-rviz2                                         \
+        ros-${ROS_DISTRO}-joy                                           \
+        ros-${ROS_DISTRO}-joy-linux                                     \
+        ros-${ROS_DISTRO}-teleop-twist-joy                              \
+        ros-${ROS_DISTRO}-twist-mux                                     \
+    && DEBIAN_FRONTEND=noninteractive apt-get install                   \
+        --no-install-recommends -q -y --allow-downgrades                \
+        apt-utils                                                       \
+        iputils-ping                                                    \
+        pkg-config                                                      \
+        unzip                                                           \
+        vim                                                             \
+        wget                                                            \
+        python3-pip                                                     \
+        python3-venv                                                    \
+        python3-rospkg                                                  \
+        # QT aps like rviz2 would need svg rendering                    \
+        libqt5svg5-dev                                                  \
+        openssh-server                                                  \
+        xvfb                                                            \
+    && ${PYTHON_VER} -m pip install --upgrade pip                       \
+    && rm -rf /var/lib/apt/lists/*
+################################# Upgrading ROS packages END #####################################

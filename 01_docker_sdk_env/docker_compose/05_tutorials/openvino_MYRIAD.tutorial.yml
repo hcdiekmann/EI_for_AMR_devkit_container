@@ -1,0 +1,51 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  openvino:
+    image: ${REPO_URL}eiforamr-openvino-sdk:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}openvino
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file: ../common/common.yml
+      service: common
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: openvino
+    restart: "no"
+    network_mode: host
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       echo "******* Set up the OpenVINO™ environment *******"
+       source /opt/intel/openvino/bin/setupvars.sh
+       echo "******* Download the OpenVINO vehicle models *******"
+       cd /opt/intel/openvino/deployment_tools/open_model_zoo/tools/downloader/
+       ./downloader.py --name vehicle-detection-adas-0002
+       ./downloader.py --name vehicle-license-plate-detection-barrier-0106
+       echo "******* Build the demos *******"
+       cd /opt/intel/openvino/deployment_tools/open_model_zoo/demos
+       ./build_demos.sh
+       cp /root/omz_demos_build/intel64/Release/object_detection_demo /usr/bin/
+       echo "******* Download the object detection models *******"
+       cd /home/eiforamr/data_samples
+       wget http://download.tensorflow.org/models/object_detection/ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz
+       tar -xf ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz
+       mv ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03  shared_box_predictor
+       rm ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03.tar.gz
+       chmod 755 -R shared_box_predictor
+       echo "******* Download samples video *******"
+       cd /home/eiforamr/
+       git clone https://github.com/intel-iot-devkit/sample-videos
+       echo "******* Run Inference Engine object detection on a pretrained network using the Single-Shot multibox Detection (SSD) method. *******"
+       echo "******* Run the detection demo application on MYRIAD X accelerator *******"
+       timeout 60s object_detection_demo -i /home/eiforamr/sample-videos/person-bicycle-car-detection.mp4 -m /opt/intel/openvino/deployment_tools/open_model_zoo/tools/downloader/intel/vehicle-license-plate-detection-barrier-0106/FP32/vehicle-license-plate-detection-barrier-0106.xml -d MYRIAD -at ssd --loop
+       echo "******* Use the Model Optimizer to convert a TensorFlow Neural Network model *******"
+       python3 /opt/intel/openvino/deployment_tools/model_optimizer/mo_tf.py --reverse_input_channels --input_model /home/eiforamr/data_samples/shared_box_predictor/frozen_inference_graph.pb --transformations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json --tensorflow_object_detection_api_pipeline_config /home/eiforamr/data_samples/shared_box_predictor/pipeline.config --output_dir /home/eiforamr/data_samples/shared_box_predictor_ie
+       echo "******* Run the Neural Network again with the Inference Engine on MYRIAD X accelerator *******"
+       object_detection_demo -i /home/eiforamr/sample-videos/person-bicycle-car-detection.mp4 -m  /home/eiforamr/data_samples/shared_box_predictor_ie/frozen_inference_graph.xml -d MYRIAD -at ssd

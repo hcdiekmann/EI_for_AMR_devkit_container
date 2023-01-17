@@ -1,0 +1,37 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  fastmapping:
+    image: ${REPO_URL}amr-fastmapping:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fastmapping
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: fastmapping
+    restart: "no"
+    volumes:
+      - ../../artifacts/01_amr/amr_generic/config:/tmp/ug_configs
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       source /opt/ros/foxy/setup.bash
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       cd ${CONTAINER_BASE_PATH}/01_docker_sdk_env/docker_compose/06_bags/
+       ros2 bag play robot_spinning &
+       sleep 2
+       source /home/eiforamr/workspace/FastMapping/src/prebuilt_fastmapping/local_setup.bash
+       ros2 run fast_mapping fast_mapping_node &
+       # Wait for fast_mapping_node to start
+       sleep 2
+       rviz2 -d /tmp/ug_configs/fastmapping_tutorial_config.rviz

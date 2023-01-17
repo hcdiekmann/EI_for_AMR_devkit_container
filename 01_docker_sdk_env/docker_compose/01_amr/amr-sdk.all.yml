@@ -1,0 +1,415 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+
+
+
+  ros-base:
+    # An alternate to ros:foxy image. It has certain ros2 packages updated. Its more aligned with rest of
+    # docker-images because all images are based on this image. For any kind of generic ros:foxy use, please
+    # prefer this image.
+    image: ${REPO_URL}amr-ros-base:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-base
+    env_file:
+      - ./.env
+    extends:
+      file: ../common/common.yml
+      service: common
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: ros-base
+    restart: "no"
+    network_mode: host
+    command: ['/usr/bin/bash']
+
+
+  # SDK Images
+  base-sdk:
+    image: ${REPO_URL}eiforamr-base-sdk:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-eiforamr-}base-sdk
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: base-sdk
+    command: ['echo base-sdk run finished.']
+
+
+  openvino-sdk:
+    image: ${REPO_URL}eiforamr-openvino-sdk:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-eiforamr-}openvino-sdk
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: openvino-sdk
+    command: ['echo openvino-sdk run finished.']
+
+
+  full-sdk:
+    image: ${REPO_URL}eiforamr-full-flavour-sdk:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-eiforamr-}full-flavour-sdk
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: full-sdk
+    command: ['echo full-sdk run finished.']
+
+
+  aaeon-amr-interface:
+    image: ${REPO_URL}amr-aaeon-amr-interface:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}aaeon-amr-interface
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: aaeon-amr-interface
+    command: ['echo aaeon-amr-interface run finished.']
+
+
+  adbscan:
+    image: ${REPO_URL}amr-adbscan:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}adbscan
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: adbscan
+    command: ['echo adbscan run finished.']
+
+
+  battery-bridge:
+    image: ${REPO_URL}amr-battery-bridge:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}battery-bridge
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    volumes:
+      - /dev/battery_bridge:/dev/battery_bridge:rw
+    build:
+      target: battery-bridge
+    command: ['echo battery-bridge run finished.']
+
+
+  cartographer:
+    image: ${REPO_URL}amr-cartographer:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}cartographer
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: cartographer
+    command: ['echo cartographer run finished.']
+
+
+  collab-slam:
+    image: ${REPO_URL}amr-collab-slam:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}collab-slam
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: collab-slam
+    command: ['echo collab-slam run finished.']
+
+
+  collab-slam-gpu:
+    image: ${REPO_URL}amr-collab-slam-gpu:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}collab-slam-gpu
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: collab-slam-gpu
+    group_add:
+      - 109
+    command: ['echo collab-slam-gpu run finished.']
+
+
+  fastmapping:
+    image: ${REPO_URL}amr-fastmapping:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fastmapping
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: fastmapping
+    command: ['echo fastmapping run finished.']
+
+
+  fdo-client:
+    image: ${REPO_URL}amr-fdo-client:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fdo-client
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: fdo-client
+
+
+  fleet-management:
+    image: ${REPO_URL}amr-fleet-management:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fleet-management
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: fleet-management
+
+  gazebo:
+    image: ${REPO_URL}amr-gazebo:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}gazebo
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: gazebo
+    command: ['echo gazebo run finished.']
+
+
+  gstreamer:
+    image: ${REPO_URL}amr-gstreamer:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}gstreamer
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: gstreamer
+    command: ['echo gstreamer run finished.']
+
+
+  imu-tools:
+    image: ${REPO_URL}amr-imu-tools:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}imu-tools
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: imu-tools
+    command: ['echo imu-tools run finished.']
+
+
+  kobuki:
+    image: ${REPO_URL}amr-kobuki:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}kobuki
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: kobuki
+    command: ['echo kobuki run finished.']
+
+
+  kudan-slam:
+    image: ${REPO_URL}amr-kudan-slam:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}kudan-slam
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: kudan-slam
+    command: ['echo kudan-slam run finished.']
+
+
+  nav2:
+    image: ${REPO_URL}amr-nav2:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}nav2
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: nav2
+    command: ['echo nav2 run finished.']
+
+
+  realsense:
+    image: ${REPO_URL}amr-realsense:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}realsense
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: realsense
+    command: ['echo realsense run finished.']
+
+
+  robot-localization:
+    image: ${REPO_URL}amr-robot-localization:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}robot-localization
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: robot-localization
+    command: ['echo robot-localization run finished.']
+
+
+  ros-arduino:
+    image: ${REPO_URL}amr-ros-arduino:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-arduino
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: ros-arduino
+    command: ['echo ros-arduino run finished.']
+
+
+  ros1-bridge:
+    image: ${REPO_URL}amr-ros1-bridge:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros1-bridge
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: ros1-bridge
+    command: ['echo ros1-bridge run finished.']
+
+
+  ros2-openvino:
+    image: ${REPO_URL}amr-ros2-openvino:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros2-openvino
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: ros2-openvino
+    command: ['echo ros2-openvino run finished.']
+
+
+  rplidar:
+    image: ${REPO_URL}amr-rplidar:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}rplidar
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: rplidar
+    command: ['echo rplidar run finished.']
+
+
+  rtabmap:
+    image: ${REPO_URL}amr-rtabmap:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}rtabmap
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: rtabmap
+    command: ['echo rtabmap run finished.']
+
+
+  sick-nanoscan:
+    image: ${REPO_URL}amr-sick-nanoscan:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}sick-nanoscan
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: sick-nanoscan
+    command: ['echo sick-nanoscan run finished.']
+
+
+  slam-toolbox:
+    image: ${REPO_URL}amr-slam-toolbox:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}slam-toolbox
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: slam-toolbox
+    command: ['echo slam-toolbox run finished.']
+
+
+  turtlebot3:
+    image: ${REPO_URL}amr-turtlebot3:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlebot3
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: turtlebot3
+    command: ['echo turtlebot3 run finished.']
+
+
+  turtlesim:
+    image: ${REPO_URL}amr-turtlesim:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlesim
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: turtlesim
+    command: ['echo turtlesim run finished.']
+
+
+  vda5050-ros2-bridge:
+    image: ${REPO_URL}amr-vda5050-ros2-bridge:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda5050-ros2-bridge
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: vda5050-ros2-bridge
+    volumes:
+      - /etc/amr/certs:/etc/amr/certs
+    command: ['echo vda5050-ros2-bridge run finished.']
+
+
+  wandering:
+    image: ${REPO_URL}amr-wandering:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}wandering
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: wandering
+    command: ['echo wandering run finished.']
+
+  vda-navigator:
+    image: ${REPO_URL}amr-vda-navigator:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda-navigator
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: vda-navigator
+    command: ['echo vda-navigator run finished.']
+
+  wwan-5g-modem:
+    image: ${REPO_URL}amr-wwan-5g-modem:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}wwan-5g-modem
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: wwan-5g-modem
+
+  aaeon-inference:
+    image: ${REPO_URL}amr-aaeon-inference:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}aaeon-inference
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: aaeon-inference
+    command: ['echo aaeon inference run finished.']
+
+      

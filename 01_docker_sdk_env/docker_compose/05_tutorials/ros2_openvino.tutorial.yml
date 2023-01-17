@@ -1,0 +1,37 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  ros2-openvino:
+    image: ${REPO_URL}amr-ros2-openvino:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros2-openvino
+    extends:
+      file: ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: ros2-openvino
+    # We enter into bash shell of docker-container
+    command:
+    - |
+      echo "******* Set up the OpenVINO™ environment *******"
+      source /opt/intel/openvino/bin/setupvars.sh
+      mkdir -p /opt/openvino_toolkit
+      chmod 777 -R /opt/openvino_toolkit
+      echo "******* Get the optimized Intermediate Representation (IR) of model *******"
+      cp -r ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_openvino/models/  /opt/openvino_toolkit/
+      echo "******* Copy label files to the same location where the models are *******"
+      cp /home/eiforamr/ros2_ws/src/ros2_openvino_toolkit/data/labels/face_detection/face-detection-adas-0001.labels /opt/openvino_toolkit/models/face_detection/output/intel/face-detection-adas-0001/FP32/
+      cp /home/eiforamr/ros2_ws/src/ros2_openvino_toolkit/data/labels/face_detection/face-detection-adas-0001.labels /opt/openvino_toolkit/models/face_detection/output/intel/face-detection-adas-0001/FP16/
+      cp /home/eiforamr/ros2_ws/src/ros2_openvino_toolkit/data/labels/emotions-recognition/FP32/emotions-recognition-retail-0003.labels /opt/openvino_toolkit/models/emotions-recognition/output/intel/emotions-recognition-retail-0003/FP32/
+      cp /home/eiforamr/ros2_ws/src/ros2_openvino_toolkit/data/labels/object_segmentation/frozen_inference_graph.labels /opt/openvino_toolkit/models/semantic-segmentation/output/intel/semantic-segmentation-adas-0001/FP32/
+      cp /home/eiforamr/ros2_ws/src/ros2_openvino_toolkit/data/labels/object_segmentation/frozen_inference_graph.labels /opt/openvino_toolkit/models/semantic-segmentation/output/intel/semantic-segmentation-adas-0001/FP16/
+      cp /home/eiforamr/ros2_ws/src/ros2_openvino_toolkit/data/labels/object_detection/vehicle-license-plate-detection-barrier-0106.labels /opt/openvino_toolkit/models/vehicle-license-plate-detection/output/intel/vehicle-license-plate-detection-barrier-0106/FP32
+      echo "******* Before launch, check the parameter configurations in 05_tutorials/param/pipeline_xxxx.yaml to ensure that parameters like model path, label path and inputs are correct *******"
+      cp ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/param/pipeline* ../ros2_ws/install/dynamic_vino_sample/share/dynamic_vino_sample/param/
+      echo "******* Run object segmentation sample code input from Image *******"
+      timeout 60s ros2 launch dynamic_vino_sample pipeline_segmentation_image.launch.py
+      echo "******* Run object segmentation sample code input from RealSense Camera Topic *******"
+      timeout 60s ros2 launch dynamic_vino_sample pipeline_segmentation.launch.py

@@ -1,0 +1,92 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+################################# fleet-management(TC-Client) app START #####################################
+# This docker-stage-file contains instructions for creating docker-image 
+# representing TurtleCreek used for robot stats ( battery ), OTA firmware updates for robots etc
+
+WORKDIR /src/
+
+COPY artifacts/01_amr/amr_fleet_management/turtle_creek_client/deb/*.deb .
+COPY artifacts/01_amr/amr_fleet_management/turtle_creek_client/adapter.cfg /src/adapter.cfg
+COPY artifacts/01_amr/amr_fleet_management/turtle_creek_client/cloud_source /src/cloud_source
+COPY artifacts/01_amr/amr_fleet_management/turtle_creek_client/firmware_tool_info.conf /src/firmware_tool_info.conf
+COPY artifacts/01_amr/amr_fleet_management/turtle_creek_client/UpdateRealSense.sh /usr/bin/UpdateRealSense.sh
+COPY artifacts/02_edge_server/edge_server_fleet_management/thingsboard/thingsboard.pub.pem /src/thingsboard.pub.pem
+RUN echo "container=docker" > /etc/environment                                                      \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y                          \
+        mosquitto                                                                                   \
+        cryptsetup                                                                                  \
+        openssl                                                                                     \
+        dmidecode                                                                                   \
+        dbus                                                                                        \
+        net-tools                                                                                   \
+        rsyslog                                                                                     \
+        libffi-dev                                                                                  \
+        pciutils                                                                                    \
+        lxc-common                                                                                  \
+        dkms                                                                                        \
+        libglib2.0                                                                                  \
+        libssl1.0                                                                                   \
+        udev                                                                                        \
+        software-properties-common                                                                  \
+        apt-utils                                                                                   \
+        docker.io                                                                                   \
+    && apt-get clean                                                                                \
+    && rm -rf /var/lib/apt/lists/*                                                                  \
+    && mkdir -p /etc/intel-manageability/public/ /etc/intel-manageability/secret/                   \
+    && mkdir -p /lib/firmware/intel-flashless                                                       \
+    && mkdir -p /cache                                                                              \
+    && echo FALSE >> /etc/intel-manageability/public/tpm_flag                                       \
+    && dpkg --force-all -i ./mqtt*.deb                                                              \ 
+    && dpkg -i ./inbm-dispatcher*.deb                                                               \
+    && dpkg -i ./inbm-diagnostic*.deb                                                               \
+    && dpkg -i ./inbm-configuration*.deb                                                            \
+    && dpkg -i ./inbm-cloudadapter*.deb                                                             \
+    && dpkg -i ./inbm-telemetry*.deb                                                                \
+    && dpkg -i ./trtl*.deb                                                                          \
+    && dpkg -i ./inbc-program*.deb                                                                  \
+    && groupadd -f mqtt-broker                                                                      \
+    && groupadd -f dispatcher-agent                                                                 \
+    && groupadd -f telemetry-agent                                                                  \
+    && groupadd -f configuration-agent                                                              \
+    && groupadd -f cloudadapter-agent                                                               \
+    && groupadd -f diagnostic-agent                                                                 \
+    && groupadd -f inbc-program                                                                     \
+    && mkdir -p /var/persistent-log/mosquitto                                                       \
+    && mkdir -p /var/cache/manageability/repository-tool/sota                                       \
+    && chgrp mqtt-broker /var/persistent-log/mosquitto                                              \
+    && chmod g+rwx /var/persistent-log/mosquitto                                                    \
+    && chmod -R g+rw /var/persistent-log/mosquitto                                                  \
+    && chmod 755 /usr/bin/UpdateRealSense.sh                                                        \
+    && ln -sf /host/var/rm-daemon /var/rm-daemon                                                    \
+    && ln -sf /host/var/rm-daemon-notify /var/rm-daemon-notify                                      \
+    && systemctl enable mqtt inbm inbm-dispatcher inbm-telemetry inbm-diagnostic inbm-configuration \
+    && systemctl enable inbm-cloudadapter                                                           \
+    && systemctl set-default multi-user.target                                                      \
+    && systemctl disable docker                                                                     \
+    && sed -i '/^ExecStart=.*/a ExecStartPost=/src/cloud_source' /lib/systemd/system/mqtt.service   \
+    && sed -i 's/^[ \t]*docker[ \t]*$//g' /etc/intel_manageability.conf                             \
+    && sed -i 's/inbm-telemetry//g' /etc/intel_manageability.conf                                   \
+    && sed -i 's/level=ERROR/level=DEBUG/g' /etc/intel-manageability/public/*/logging.ini           \
+    && mkdir -p /var/certs
+
+################################# fleet-management(TC-Client) app END #####################################

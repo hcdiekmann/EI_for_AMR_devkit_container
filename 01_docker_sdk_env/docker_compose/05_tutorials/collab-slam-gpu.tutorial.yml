@@ -1,0 +1,38 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  collab-slam:
+    image: ${REPO_URL}amr-collab-slam-gpu:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}collab-slam-gpu
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: collab-slam
+    volumes:
+      - ../../artifacts/01_amr/amr_generic/config:/tmp/ug_configs
+    restart: "no"
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    group_add:
+      - 109
+    # We enter into bash shell of docker-container
+    command:
+    - |
+      export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      export INTEL_GPU_ORB_LIB=/home/eiforamr/workspace/lib/orb_extractor/lib
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/eiforamr/workspace/lib/orb_extractor/lib/
+      source /home/eiforamr/workspace/ros_entrypoint.sh
+      cd ${CONTAINER_BASE_PATH}/01_docker_sdk_env/docker_compose/06_bags/
+      ros2 bag play robot1_bag/ &
+      ros2 launch univloc_tracker collab_slam_nav.launch.py vocabulary:=/home/eiforamr/workspace/CollabSLAM/prebuilt_collab_slam_gpu/univloc_tracker/share/univloc_tracker/config/orb_vocab.dbow2 use_odom:=true server_rviz:=false enable_fast_mapping:=true projection_min:=0.2 zmin:=0.15 &
+      sleep 2
+      rviz2 -d /tmp/ug_configs/collab_slam_fm.rviz

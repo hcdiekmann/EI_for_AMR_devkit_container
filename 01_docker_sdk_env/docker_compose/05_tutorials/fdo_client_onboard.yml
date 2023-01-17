@@ -1,0 +1,37 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+version: "3.9"
+services:
+  fdo-client:
+    image: ${REPO_URL}amr-fdo-client:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fdo-client
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    network_mode: host
+    privileged: true
+    pid: host
+    ipc: host
+    environment:
+      - REPO_URL=${REPO_URL}
+      - DOCKER_TAG=${DOCKER_TAG:-latest}
+      - CONTAINER_NAME_PREFIX=${CONTAINER_NAME_PREFIX:-amr-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/tc:/etc/tc
+      - /dev:/dev
+      - /:/host
+      - ${CONTAINER_BASE_PATH}/01_docker_sdk_env/docker_compose/05_tutorials/turtle_creek_standalone.yml:/fdo/amr-fleet-management.yml:ro
+      

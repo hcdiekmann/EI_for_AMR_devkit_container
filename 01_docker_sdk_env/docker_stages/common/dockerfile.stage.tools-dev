@@ -1,0 +1,43 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# Common-dev-tools  START #####################################
+## ROS Benchmark Tools
+#   In order to debug and benchmark SLAM accuracy algorithm this tool is needed:
+#   https://github.com/MichaelGrupp/evo
+#
+#   Due to issue mentioned here https://github.com/ros2/launch_ros/issues/165, it is not
+#   possible to debug ROS application with gdb as regular application. Additional terminal is needed
+#   Either gnome-terminal or xterm
+## ROS Benchmark Tools
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get        \
+        install --no-install-recommends -q -y --allow-downgrades    \
+        clang                                                       \
+        gedit                                                       \
+        gdb                                                         \
+        strace                                                      \
+        xterm                                                       \
+        valgrind                                                    \
+    && rm -rf /var/lib/apt/lists/*                                  \
+    && pip3 install evo --upgrade --no-binary evo
+################################# Common-dev-tools  END #####################################

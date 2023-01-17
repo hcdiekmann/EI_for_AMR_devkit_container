@@ -1,0 +1,89 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  ###########################################
+
+
+
+################################# WWAN 5G Modem Manager START #####################################
+# Modem manager is a unified API for communicating with 5G WWAN modem. 
+#
+# libmbim is a glib based library for communicating with 5G WWAN Modems
+#
+# reference: https://modemmanager.org/docs/
+
+COPY artifacts/01_amr/amr_5G_wwan/network_init.sh ${WORKSPACE_DIR}/5g-modem/network_init.sh
+RUN chmod +x ${WORKSPACE_DIR}/5g-modem/network_init.sh
+
+WORKDIR ${WORKSPACE_DIR}/5g-modem
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive                                        \
+    apt remove -y modemmanager libmbim-glib-dev                                             \
+    && apt-get install -y --no-install-recommends                                           \
+        openssl                                                                             \
+        openssh-server                                                                      \
+        dbus                                                                                \
+        net-tools                                                                           \
+        iproute2                                                                            \
+        iputils-ping                                                                        \
+        pciutils                                                                            \
+        dkms                                                                                \
+        libssl1.0                                                                           \
+        udev                                                                                \
+        software-properties-common                                                          \
+        apt-utils                                                                           \
+        git                                                                                 \
+        cmake                                                                               \
+        bash-completion                                                                     \
+        xsltproc                                                                            \
+        libglib2.0-dev                                                                      \
+        libgirepository1.0-dev                                                              \
+        help2man                                                                            \
+        libdbus-1-dev                                                                       \
+        libgudev-1.0-dev                                                                    \
+        libsystemd-dev                                                                      \
+        libpolkit-gobject-1-dev                                                             \
+        gettext                                                                             \
+        meson                                                                               \
+        dwarves                                                                             \
+    && apt-get clean                                                                        \
+    && rm -rf /var/lib/apt/lists/*                                                          \
+    && git clone ${WWAN_5G_LIBMBIM_REPO}                                                    \
+    && cd libmbim                                                                           \
+    && git checkout ${WWAN_5G_LIBMBIM_COMMIT_ID}                                            \
+    && meson setup build --prefix=/usr                                                      \
+    && ninja -C build                                                                       \
+    && ninja -C build install                                                               \
+    && cd ${WORKSPACE_DIR}/5g-modem                                                         \
+    && git clone ${WWAN_5G_MODEM_MANAGER_REPO}                                              \
+    && cd ModemManager                                                                      \
+    && git checkout ${WWAN_5G_MODEM_MANAGER_COMMIT_ID}                                      \
+    && meson setup build -Dmbim=true -Dqmi=false -Dqrtr=false                               \
+                         --prefix=/usr --sysconfdir=/etc                                    \
+    && ninja -C build                                                                       \
+    && ninja -C build install                                                               \
+    && rm -rf ${WORKSPACE_DIR}/5g-modem/libmbim                                             \
+    && rm -rf ${WORKSPACE_DIR}/5g-modem/ModemManager                                        \
+    && /etc/init.d/dbus start                                                               \
+    && systemctl unmask ModemManager                                                        \
+    && systemctl enable ModemManager                                                        \
+    && export LD_LIBRARY_PATH="/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH"                    \
+    && export PATH="/usr/local/bin:/usr/local/sbin:$PATH"                                   \
+    && echo "/usr/local/lib/x86_64-linux-gnu" >> /etc/ld.so.conf.d/x86_64-linux-gnu.conf    \
+    && ldconfig
+################################# WWAN 5G Modem Manager END #####################################

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+export DOCKER_HOSTNAME=$(hostname)
+export DOCKER_USER_ID=$(id -u)
+export DOCKER_GROUP_ID=$(id -g)
+export DOCKER_USER=$(whoami)
+export DOCKER_TAG=2022.3
+xhost +

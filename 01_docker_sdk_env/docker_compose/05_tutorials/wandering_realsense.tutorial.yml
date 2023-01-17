@@ -1,0 +1,91 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  ros-base-rviz2:
+    image: ${REPO_URL}amr-ros-base:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-base-rviz2
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: ros-base
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 run rviz2 rviz2 -d ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/config/wandering_object_detection_config.rviz
+
+  realsense:
+    image: ${REPO_URL}amr-realsense:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}realsense
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: realsense
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 launch realsense2_camera rs_launch.py align_depth:=true use_sim_time:=false
+
+  ros-base-camera-tf:
+    image: ${REPO_URL}amr-ros-base:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-base-camera-tf
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: ros-base
+    depends_on:
+      - realsense
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 base_link camera_link --ros-args -p use_sim_time:=false
+
+  rtabmap:
+    image: ${REPO_URL}amr-rtabmap:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}rtabmap
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: rtabmap
+    depends_on:
+      - ros-base-camera-tf
+      - realsense
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sudo cp ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/launch/realsense_d400.launch.py ../ros2_ws/install/rtabmap_ros/share/rtabmap_ros/launch/
+        ros2 launch rtabmap_ros realsense_d400.launch.py use_sim_time:=false
+
+  object-detection:
+    image: ${REPO_URL}amr-object-detection:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}object-detection
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: object-detection
+    command:
+    - |
+      export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      source /opt/intel/openvino/bin/setupvars.sh
+      ros2 run object_detection object_detection_node
+
+  wandering:
+    image: ${REPO_URL}amr-wandering:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}wandering
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: wandering
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 run wandering_app wandering --ros-args -p use_sim_time:=false

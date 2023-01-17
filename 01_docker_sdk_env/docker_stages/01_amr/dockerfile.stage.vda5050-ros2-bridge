@@ -1,0 +1,27 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #######################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+######################################## vda5050-ros2-bridge app START ###########################################
+RUN cd ${WORKSPACE_DIR}/vda5050_ros2_bridge                                                                     \
+    && source ${ROS_INSTALL_DIR}/setup.bash                                                                     \
+    && colcon build --packages-select vda5050_ros2_bridge --install-base  ./prebuilt_vda5050_ros2_bridge
+########################################## vda5050-ros2-bridge app END ###########################################

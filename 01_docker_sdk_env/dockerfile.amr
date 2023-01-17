@@ -1,0 +1,674 @@
+# syntax = edrevo/dockerfile-plus:0.1.0
+
+# INTEL CONFIDENTIAL
+
+# Copyright 2021-2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+##
+# Include+ the component version args here to have them available in any FROM
+# statement below.
+INCLUDE+ docker_stages/dockerfile.component_versions
+
+
+
+############################################################################################################################################
+################################### Incremental Development-ready SDK-docker-image-builds START ############################################
+############################################################################################################################################
+
+##################################### ros-base-pre stage START #####################################
+# upgrades any existing ros:foxy component and provides base to all other images.
+# But it is still missing pcl optimized libs, which are needed in all the images,
+# but pcl-libs are generated using oneapi, so we depend on full-flavour-sdk image.
+# to solve this dependency, we create first ros-base-pre and carry forward to generate full-flavour-sdk-pre image,
+# and then using that image, we create pcl libs and copy libs to create final ros-base and full-flavour-sdk images.
+FROM ros:foxy@${ROS_FOXY_DIGEST} AS ros-base-pre
+INCLUDE+ docker_stages/dockerfile.component_versions
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.user-n-env-setup
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.ros_upgrade
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+##################################### ros-base-pre stage END #######################################
+
+
+
+############################### openvino-runtime-builder stage START ###############################
+# This stage is intermediate stage and will install a runtime version of openvino inside /opt/intel
+# Later on multiple images will COPY openvino-runtime installation from this stage.
+FROM ros-base-pre AS openvino-runtime-builder
+ARG OPENVINO_PACKAGE_TYPE=runtime
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.openvino.pre
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+############################### openvino-runtime-builder stage END #################################
+
+
+
+################################# Nav2-pre stage START #############################################
+# nav2 is used by components for static linking.
+# So keeping it part of SDK images, so that components can link when they are compiled using SDK-stages.
+# Note: nav2 does not link to libopencv libs
+FROM ros-base-pre AS nav2-pre
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.nav2
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# Nav2-pre stage END ###############################################
+
+
+
+##################################### opencv stage START #####################################
+# Any component which is linking to libopencv* libs should:
+#       Link to the Libs createed by this "opencv" stage.
+#       to do that, docker-COPY OpenCV libs inside that compone.ts's stage. Example is stage: fastmapping
+# Note: "opencv" is not a separate docker-image but only an intermediate stage for rest of following images.
+FROM nav2-pre AS opencv
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.opencv
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+##################################### opencv stage END #######################################
+
+
+
+################################# rtabmap-pre stage START ##########################################
+# rtabmap is used by components for static linking.
+# So keeping it also part of SDK images, so that components can link when they are compiled using SDK-stages.
+# rtabmap has dynamic-linking to Opencv libs such as example below, so keeping rtabmap based on opencv stage.
+#       eiforamr@demohost:~/workspace$ ldd ../ros2_ws/install/rtabmap_ros/lib/rtabmap_ros/rtabmap | grep opencv
+#       libopencv_core.so.405 => /usr/local/lib/libopencv_core.so.405 (0x00007f2643672000)
+#       libopencv_stitching.so.405 => /usr/local/lib/libopencv_stitching.so.405 (0x00007f26435b8000)
+#       libopencv_aruco.so.405 => /usr/local/lib/libopencv_aruco.so.405 (0x00007f2643554000)
+#       libopencv_xfeatures2d.so.405 => /usr/local/lib/libopencv_xfeatures2d.so.405 (0x00007f26432c7000)
+#       libopencv_video.so.405 => /usr/local/lib/libopencv_video.so.405 (0x00007f26414bc000)
+#       ...
+# Here .s0.405 indicates that libs from OpenCV version 4.5.5 are linked.
+#
+# rtabmap also has static-linking to nav2.
+FROM opencv AS rtabmap-pre
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.rtabmap
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# rtabmap-pre stage END ############################################
+
+
+
+################################# base-SDK-pre stage START ####################################
+##########
+# nav2 + Opencv + rtabmap + gstreamer + Realsense-SDK + Turtlebot3 + Simulations + src-code of components + build & debugging tools.
+##########
+FROM rtabmap-pre AS base-sdk-pre
+
+# Below 2 components will work hand in hand to create gstreamer pipelines during development.
+# The same set of below components are also added in "gstreamer" docker-image for deployment purpose.
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.gstreamer
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-sdk
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-ros2
+
+# Simlautions has hard dependency in nav2 & turtlebot3.
+# Keep simulations in this sdk as its being used for development.
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.turtlebot3
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.simulations
+
+# Note: Any new component should be installed on top of this place.
+#   Exception is the src-code which should copied after this step.
+# Note: Below tools are generic and they will be used inside SDK containers "ONLY".
+#   They are not installed in deployment-ready images, so the deployment-ready-images
+#   should have run-time dependencies installed directly inside those images..
+INCLUDE+ docker_stages/common/dockerfile.stage.tools-rel
+INCLUDE+ docker_stages/common/dockerfile.stage.tools-dev
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.tools-rel-amr
+
+# Include ros1-bridge component as it pulls in ros-bags which are used for development purpose.
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.ros1-bridge
+
+###src-code copy steps###
+# Note: This step is kept in the end of all steps, so that if there are
+#       changes in src code then lesser layers become dirty.
+# Keep src-code of Intel-components inside the SDK-image, as SDK-image will be used to compile them.
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.fastmapping.prereq
+COPY artifacts/01_amr/amr_fleet_management/battery-bridge       ${WORKSPACE_DIR}/battery-bridge
+COPY artifacts/01_amr/FastMapping                               ${WORKSPACE_DIR}/FastMapping/
+COPY artifacts/01_amr/amr_fleet_management/vda5050_ros2_bridge  ${WORKSPACE_DIR}/vda5050_ros2_bridge
+COPY artifacts/01_amr/Wandering                                 ${WORKSPACE_DIR}/Wandering
+COPY artifacts/01_amr/amr_fleet_management/vda_navigator        ${WORKSPACE_DIR}/vda_navigator
+
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# base-SDK-pre stage END #######################################
+
+
+
+################################# openvino-SDK-pre stage START ######################################
+FROM base-sdk-pre AS openvino-sdk-pre
+ARG OPENVINO_PACKAGE_TYPE=dev
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.openvino.pre
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.openvino.post
+
+###src-code copy step###
+# Note: This step is kept in the end of all steps, so that if there are
+#       changes in src code then lesser layers become dirty.
+# Keep src-code of Intel-components inside the SDK-image, as SDK-image will be used to compile them.
+COPY artifacts/01_amr/object_detection                          ${WORKSPACE_DIR}/object_detection
+# Remote-inference depends on OpenVINO, also its used only with object-detection, so src-code of
+# both the components is kept inside OpenVINO-SDK. This SDK-image is used to compile them later on.
+COPY artifacts/01_amr/amr_fleet_management/remote_inference     ${WORKSPACE_DIR}/remote_inference
+
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# openvino-SDK-pre stage END ########################################
+
+
+
+################################# full-SDK-pre stage START ##########################################
+# OpenVINO-SDK + OneAPI
+FROM intel/oneapi-basekit:${ONEAPI_VERSION}-devel-ubuntu20.04 AS oneapi_base
+FROM openvino-sdk-pre AS full-sdk-pre
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.oneapi
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# full-SDK-pre stage END ############################################
+
+
+
+################################# ros-base stage START ####################################
+# build pcl libs which depend on oneapi using full-sdk-pre intermediate-image.
+FROM full-sdk-pre AS pcl-flann-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.pcl
+
+FROM ros-base-pre AS ros-base
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/pcl ${WORKSPACE_DIR}/lib/pcl
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/flann ${WORKSPACE_DIR}/lib/flann
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# ros-base stage END #######################################
+
+
+
+################################# nav2 stage START ####################################
+# copy pcl libs with nav2-pre as base image.
+FROM nav2-pre AS nav2
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/pcl ${WORKSPACE_DIR}/lib/pcl
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/flann ${WORKSPACE_DIR}/lib/flann
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# nav2 stage END #######################################
+
+
+
+################################# rtabmap stage START ####################################
+# copy pcl libs with rtabmap-pre as base image.
+FROM rtabmap-pre AS rtabmap
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/pcl ${WORKSPACE_DIR}/lib/pcl
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/flann ${WORKSPACE_DIR}/lib/flann
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# rtabmap stage END #######################################
+
+
+
+################################# base-sdk stage START ####################################
+FROM base-sdk-pre AS base-sdk
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/pcl ${WORKSPACE_DIR}/lib/pcl
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/flann ${WORKSPACE_DIR}/lib/flann
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# base-sdk stage END #######################################
+
+
+
+################################# openvino-SDK stage START ####################################
+FROM openvino-sdk-pre AS openvino-sdk
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/pcl ${WORKSPACE_DIR}/lib/pcl
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/flann ${WORKSPACE_DIR}/lib/flann
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# openvino-SDK stage END #######################################
+
+
+
+################################# full-SDK stage START ####################################
+FROM full-sdk-pre AS full-sdk
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/pcl ${WORKSPACE_DIR}/lib/pcl
+COPY --from=pcl-flann-builder ${WORKSPACE_DIR}/lib/flann ${WORKSPACE_DIR}/lib/flann
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# full-SDK stage END #######################################
+
+
+
+############################################################################################################################################
+#################################### Incremental Development-ready SDK-docker-image-builds END #############################################
+############################################################################################################################################
+
+
+
+
+
+
+
+
+############################################################################################################################################
+################################ Deloyment-ready Component-specific Docker-image-builds START ##############################################
+############################################################################################################################################
+
+FROM ros-base AS aaeon-inference
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.aaeon-inference
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+
+################################# aaeon-amr-interface stage START ####################################
+FROM base-sdk AS aaeon-amr-interface-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.aaeon-amr-interface
+
+FROM ros-base AS aaeon-amr-interface
+COPY --from=aaeon-amr-interface-builder ${ROS2_WS}/install ${ROS2_WS}/install
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# aaeon-amr-interface stage END #######################################
+
+
+
+################################### fleet-management stage START ###################################
+FROM jrei/systemd-ubuntu@${UBUNTU_20_04_SYSTEMD_DIGEST} AS fleet-management
+INCLUDE+ docker_stages/dockerfile.component_versions
+INCLUDE+ docker_stages/common/dockerfile.stage.tools-rel
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.fleet-management
+################################### fleet-management stage END #####################################
+
+
+
+################################### adbscan stage START ###################################
+FROM base-sdk AS adbscan-builder
+# below file copies src code then compiles it and then removes src code leaving only binaries in the image.
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.adbscan
+
+FROM ros-base AS adbscan
+COPY --from=adbscan-builder ${ROS2_WS}/install/adbscan_ros2 ${ROS2_WS}/install/adbscan_ros2
+COPY --from=adbscan-builder ${ROS2_WS}/install/nav2_dynamic_msgs ${ROS2_WS}/install/nav2_dynamic_msgs
+COPY --from=adbscan-builder ${ROS2_WS}/install/setup*                               \
+                            ${ROS2_WS}/install/local_setup*                         \
+                            ${ROS2_WS}/install/_local_setup*                        ${ROS2_WS}/install/
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get                        \
+    install --no-install-recommends -q -y --allow-downgrades                        \
+        ros-${ROS_DISTRO}-pcl-conversions
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### adbscan stage END #####################################
+
+
+
+################################### battery-bridge stage START ###################################
+FROM base-sdk AS battery-bridge-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.battery-bridge
+
+FROM ros-base AS battery-bridge
+COPY --from=battery-bridge-builder ${WORKSPACE_DIR}/battery-bridge/src/prebuilt_battery_bridge \
+    ${WORKSPACE_DIR}/battery-bridge/src/prebuilt_battery_bridge
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### battery-bridge stage END #####################################
+
+
+
+################################### cartographer stage START ###################################
+FROM ros-base AS cartographer
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.cartographer
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### cartographer stage END #####################################
+
+
+
+################################### collab-slam stage START ######################################
+FROM ros-base AS collab-slam
+COPY --from=base-sdk ${ROS2_WS}/install/setup*              \
+    ${ROS2_WS}/install/local_setup*                         \
+    ${ROS2_WS}/install/_local_setup*                        ${ROS2_WS}/install/
+COPY --from=base-sdk /usr/local/lib/libopencv*              /usr/local/lib/
+COPY --from=base-sdk ${ROS2_WS}/install/cv_bridge           ${ROS2_WS}/install/cv_bridge
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive        \
+        apt-get install --no-install-recommends -q -y       \
+            ros-${ROS_DISTRO}-image-transport               \
+    && ldconfig
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.collab-slam
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### collab-slam stage END ########################################
+
+
+
+################################### collab-slam-gpu stage START ######################################
+FROM ros-base AS collab-slam-gpu
+ARG INTEL_ONEAPI_DIR=/opt/intel/oneapi
+RUN mkdir -p ${INTEL_ONEAPI_DIR}
+COPY --from=oneapi_base ${INTEL_ONEAPI_DIR} ${INTEL_ONEAPI_DIR}
+COPY --from=base-sdk ${ROS2_WS}/install/setup*              \
+    ${ROS2_WS}/install/local_setup*                         \
+    ${ROS2_WS}/install/_local_setup*                        ${ROS2_WS}/install/
+COPY --from=base-sdk /usr/local/lib/libopencv*              /usr/local/lib/
+COPY --from=base-sdk ${ROS2_WS}/install/cv_bridge           ${ROS2_WS}/install/cv_bridge
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive        \
+        apt-get install --no-install-recommends -q -y       \
+            ros-${ROS_DISTRO}-image-transport               \
+    && ldconfig
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.collab-slam-gpu
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### collab-slam-gpu stage END ########################################
+
+
+
+################################# FastMapping stage START ######################################
+FROM base-sdk AS fastmapping-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.fastmapping
+
+FROM ros-base AS fastmapping
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.fastmapping.prereq
+
+# Fastmapping app dynamically links to certain libs from rtabmap and opencv.
+COPY --from=fastmapping-builder ${ROS2_WS}/install/setup*                               \
+                                ${ROS2_WS}/install/local_setup*                         \
+                                ${ROS2_WS}/install/_local_setup*                        ${ROS2_WS}/install/
+COPY --from=fastmapping-builder ${ROS2_WS}/install/cv_bridge                            ${ROS2_WS}/install/cv_bridge
+COPY --from=fastmapping-builder ${ROS2_WS}/install/rtabmap_ros                          ${ROS2_WS}/install/rtabmap_ros
+COPY --from=fastmapping-builder ${WORKSPACE_DIR}/opencv_libs                            /usr/local/lib/
+COPY --from=fastmapping-builder ${WORKSPACE_DIR}/FastMapping/src/prebuilt_fastmapping   ${WORKSPACE_DIR}/FastMapping/src/prebuilt_fastmapping
+RUN ldconfig
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# FastMapping stage END ########################################
+
+
+
+################################### Gazebo stage START #########################################
+FROM ros-base AS gazebo
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.gazebo
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### Gazebo stage END ###########################################
+
+
+
+################################# gstreamer-PL stage START ########################################
+FROM ros-base AS gstreamer
+INCLUDE+ docker_stages/dockerfile.component_versions
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.gstreamer
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-sdk
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-ros2
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# gstreamer-PL stage END ##########################################
+
+
+
+################################# IMU Tools stage START ####################################
+FROM base-sdk AS imu-tools-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.imu-tools
+
+FROM ros-base AS imu-tools
+COPY --from=imu-tools-builder ${ROS2_WS}/install ${ROS2_WS}/install
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# IMU Tools stage END #######################################
+
+
+
+################################# Kobuki stage START ###########################################
+FROM ros-base AS kobuki
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.kobuki
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################ Kobuki stage END ##############################################
+
+
+
+################################ Kudan-SLAM stage START ###########################################
+FROM ros-base AS kudan-slam
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.kudan-slam
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.nav2
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-sdk
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-ros2
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.opencv
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+
+RUN wget -qO - https://repositories.intel.com/graphics/intel-graphics.key | sudo apt-key add -         \
+    && apt-add-repository 'deb [arch=amd64] https://repositories.intel.com/graphics/ubuntu focal main' \
+    && apt install -y intel-opencl-icd intel-level-zero-gpu level-zero intel-media-va-driver-non-free libmfx1 \
+    && rm -rf /var/lib/apt/lists/*
+################################ Kudan-SLAM stage END ##############################################
+
+
+
+################################# Object Detection stage START #########################################
+# This is deployment-ready-image for object-detection & remote-inferencing.
+# OpenVINO + Object-detection + remote-inference AND based on ros-base
+FROM openvino-sdk AS object-detection-builder
+RUN mkdir ${WORKSPACE_DIR}/opencv_libs                                  \
+    && cp -rf /usr/local/lib/libopencv* ${WORKSPACE_DIR}/opencv_libs/
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.object-detection
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.remote-inference
+
+FROM ros-base AS object-detection
+# RemoteInference has dynamic-dependencies on OpenVINO, so OpenVINO should be part of this image..
+# Copy OpenVINO installation which is in /opt/intel folder.
+COPY --from=openvino-runtime-builder /opt/intel                                                         /opt/intel
+COPY --from=object-detection-builder ${ROS2_WS}/install/setup*                                          \
+                                     ${ROS2_WS}/install/local_setup*                                    \
+                                     ${ROS2_WS}/install/_local_setup*                                   ${ROS2_WS}/install/
+COPY --from=object-detection-builder ${ROS2_WS}/install/cv_bridge                                       ${ROS2_WS}/install/cv_bridge
+COPY --from=object-detection-builder ${WORKSPACE_DIR}/omz                                               ${WORKSPACE_DIR}/omz
+COPY --from=object-detection-builder ${WORKSPACE_DIR}/object_detection/src/prebuilt_object_detection    ${WORKSPACE_DIR}/object_detection/src/prebuilt_object_detection
+# The only usecase of remote-inference is with object-detection, so it makes sense to have a common image for both nodes.
+COPY --from=object-detection-builder ${WORKSPACE_DIR}/remote_inference/prebuilt_remote_inference        ${WORKSPACE_DIR}/remote_inference/prebuilt_remote_inference
+# From Opencv: libs, cmake & include files are needed for object-detection installation
+COPY --from=object-detection-builder ${WORKSPACE_DIR}/opencv_libs                                       /usr/local/lib/
+COPY --from=object-detection-builder /usr/local/lib/cmake/opencv4                                       /usr/local/lib/cmake/opencv4
+COPY --from=object-detection-builder /usr/local/include/opencv4                                         /usr/local/include/opencv4
+
+# Below installations are needed by object-detection and remote-inference
+COPY artifacts/02_edge_server/edge_server_fleet_management/ovms/keys/server.pem                         \
+    artifacts/02_edge_server/edge_server_fleet_management/ovms/keys/client.pem                          \
+    artifacts/02_edge_server/edge_server_fleet_management/ovms/keys/client.key                          /etc/amr/ri-certs/
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive                                                    \
+        apt-get install --no-install-recommends -q -y                                                   \
+            ros-${ROS_DISTRO}-cv-bridge                                                                 \
+            ros-${ROS_DISTRO}-image-geometry                                                            \
+            ros-${ROS_DISTRO}-image-transport                                                           \
+            python3-pip                                                                                 \
+            python3-matplotlib                                                                          \
+    && pip3 install tensorflow-serving-api opencv-python
+
+# Install openvino dependencies
+ARG OPENVINO_PACKAGE_TYPE=runtime
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.openvino.post
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# Object Detection stage END ###########################################
+
+
+################################# Realsense-SDK-ROS stage START ####################################
+FROM ros-base AS realsense
+# Keep whole realsense SDK for now. todo: Room for optimization.
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-sdk
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-ros2
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# Realsense-SDK-ROS stage END ####################################
+
+
+################################# Robot localization stage START ####################################
+FROM ros-base as robot-localization
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.robot-localization
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# Robot localization stage END ######################################
+
+
+################################### ROS1-Bridge stage START ####################################
+FROM ros-base AS ros1-bridge
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.ros1-bridge
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### ROS1-Bridge stage END ######################################
+
+
+################################### ros-arduino stage START ####################################
+FROM base-sdk AS ros-arduino-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.ros-arduino
+
+FROM ros-base AS ros-arduino
+COPY --from=ros-arduino-builder /usr/local/install.tar.gz /usr/local/
+RUN tar -xzvf /usr/local/install.tar.gz -C /usr/local/            \
+    && rm /usr/local/install.tar.gz                               \
+    && ldconfig
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### ros-arduino stage END ######################################
+
+
+
+########################## ROS2 OpenVINO Wrapper stage START ###################################
+FROM openvino-sdk AS ros2-openvino-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.ros2-openvino
+
+FROM ros-base AS ros2-openvino
+COPY --from=openvino-runtime-builder    /opt/intel                  /opt/intel
+COPY --from=ros2-openvino-builder       /usr/local/lib/libopencv*   /usr/local/lib/
+COPY --from=ros2-openvino-builder       ${ROS2_WS}/install          ${ROS2_WS}/install
+COPY --from=ros2-openvino-builder       ${ROS2_WS}/src              ${ROS2_WS}/src
+
+# Install openvino dependencies
+ARG OPENVINO_PACKAGE_TYPE=runtime
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.openvino.post
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.realsense-sdk
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+########################### ROS2 OpenVINO Wrapper stage END ####################################
+
+
+
+################################# RPLidar stage START ##########################################
+FROM ros-base AS rplidar
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.rplidar
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# RPLidar stage END ############################################
+
+
+
+################################# sick-nanoscan stage START ##########################################
+FROM ros-base AS sick-nanoscan
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.sick-nanoscan
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# sick-nanoscan stage END ############################################
+
+
+
+################################### slam-toolbox stage START ###################################
+FROM ros-base AS slam-toolbox
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.slam-toolbox
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### slam-toolbox stage END #####################################
+
+
+
+################################### turtlebot3 stage START #####################################
+FROM base-sdk AS turtlebot3-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.turtlebot3
+
+FROM ros-base AS turtlebot3
+# gazebo is not needed in this image but current launch file based test implementations force us to add it here.
+# todo: The situation can be improved by use of yaml file based launch of nodes. Future work.
+# todo: test file 01_docker_sdk_env/docker_compose/04_validation/docker-compose.run.turtlebot3.test.yml needs improvement
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.gazebo
+COPY --from=turtlebot3-builder ${ROS2_WS}/install ${ROS2_WS}/install
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.simulations
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### turtlebot3 stage END #######################################
+
+
+
+################################### Turtlesim stage START ######################################
+FROM ros-base AS turtlesim
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.turtlesim
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### Turtlesim stage END ########################################
+
+
+################################### vda5050-ros2-bridge stage START ###################################
+FROM base-sdk AS vda5050-ros2-bridge-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.vda5050-ros2-bridge
+
+FROM ros-base AS vda5050-ros2-bridge
+COPY --from=vda5050-ros2-bridge-builder ${WORKSPACE_DIR}/vda5050_ros2_bridge/prebuilt_vda5050_ros2_bridge  ${WORKSPACE_DIR}/vda5050_ros2_bridge/prebuilt_vda5050-ros2-bridge
+RUN pip3 install    \
+        paho-mqtt   \
+        jsonschema
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################### vda5050-ros2-bridge stage END #####################################
+
+
+
+################################# Wandering stage START ######################################
+# Wandering should be based on nav2 image. This is a build dependency
+FROM base-sdk AS wandering-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.wandering
+
+FROM ros-base AS wandering
+
+# wandering has dynamic-dependencies on OpenVINO, so OpenVINO should be part of this image..
+# Copy OpenVINO installation which is in /opt/intel folder.
+COPY --from=openvino-runtime-builder    /opt/intel                                            /opt/intel
+# Wandering app dynamically links to certain libs from nav2 stack.
+COPY --from=wandering-builder           ${ROS2_WS}/install/setup*                             \
+                                        ${ROS2_WS}/install/local_setup*                       \
+                                        ${ROS2_WS}/install/_local_setup*                      ${ROS2_WS}/install/
+COPY --from=wandering-builder           ${ROS2_WS}/install/nav2_msgs                          ${ROS2_WS}/install/nav2_msgs
+COPY --from=wandering-builder           ${ROS2_WS}/install/nav2_util                          ${ROS2_WS}/install/nav2_util
+COPY --from=wandering-builder           ${ROS2_WS}/install/nav2_costmap_2d                    ${ROS2_WS}/install/nav2_costmap_2d
+COPY --from=wandering-builder           ${WORKSPACE_DIR}/Wandering/src/prebuilt_wandering     ${WORKSPACE_DIR}/Wandering/src/prebuilt_wandering
+
+# Below package is needed for lib libmap_msgs__rosidl_typesupport_cpp.so (dynamic linking by Wandering node)
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive                                  \
+    apt-get install --no-install-recommends -q -y                                     \
+        ros-${ROS_DISTRO}-map-msgs                                                    \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install openvino dependencies
+ARG OPENVINO_PACKAGE_TYPE=runtime
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.openvino.post
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# Wandering stage END ########################################
+
+
+
+################################# VDA Navigator START ########################################
+FROM base-sdk AS vda-navigator-builder
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.vda-navigator
+
+FROM ros-base AS vda-navigator
+
+# VDA Navigator dynamically links to certain libs from nav2 stack.
+COPY --from=vda-navigator-builder           ${ROS2_WS}/install/setup*                                   \
+                                            ${ROS2_WS}/install/local_setup*                             \
+                                            ${ROS2_WS}/install/_local_setup*                            ${ROS2_WS}/install/
+COPY --from=vda-navigator-builder           ${ROS2_WS}/install/nav2_msgs                                ${ROS2_WS}/install/nav2_msgs
+COPY --from=vda-navigator-builder           ${ROS2_WS}/install/nav2_util                                ${ROS2_WS}/install/nav2_util
+COPY --from=vda-navigator-builder           ${ROS2_WS}/install/nav2_costmap_2d                          ${ROS2_WS}/install/nav2_costmap_2d
+COPY --from=vda-navigator-builder           ${WORKSPACE_DIR}/vda_navigator/src/prebuilt_vda_navigator   ${WORKSPACE_DIR}/vda_navigator/src/prebuilt_vda_navigator
+
+# Below package is needed for lib libmap_msgs__rosidl_typesupport_cpp.so (dynamic linking by VDA Navigator node)
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive                                  \
+    apt-get install --no-install-recommends -q -y                                     \
+        ros-${ROS_DISTRO}-map-msgs                                                    \
+    && rm -rf /var/lib/apt/lists/*
+
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+################################# VDA Navigator END ########################################
+
+
+
+################################## FDO Client stage START ######################################
+FROM ubuntu:20.04@${UBUNTU_20_04_DIGEST} as fdo-client-builder
+INCLUDE+ docker_stages/dockerfile.component_versions
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.fdo-client-builder
+
+FROM ubuntu:20.04@${UBUNTU_20_04_DIGEST} as fdo-client
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.fdo-client
+################################## FDO Client stage END #######################################
+
+################################### wwan-5g-modem stage START ###################################
+FROM jrei/systemd-ubuntu@${UBUNTU_20_04_SYSTEMD_DIGEST} AS wwan-5g-modem
+INCLUDE+ docker_stages/dockerfile.component_versions
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.wwan-5g-modem
+################################### wwan-5g-modem stage END #####################################
+
+
+
+############################################################################################################################################
+################################# Deloyment-ready Component-specific Docker-image-builds END ###############################################
+############################################################################################################################################
+
+
+
+# Lets make base-sdk as default for now. Once we change CI process and validation.
+# we can remove this line to have full-sdk as default outcome of docker build command.
+FROM base-sdk

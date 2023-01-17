@@ -1,0 +1,59 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# User-n-ENV-Setup  START #####################################
+## ENV-Vars START ##
+# User name (eiforamr) can be changed while building docker image with
+# --build-arg DOCKER_USER="<user>"
+ARG DOCKER_USER=eiforamr
+ARG DOCKER_USER_UID=9876
+ARG DOCKER_USER_GROUPS=sudo,video,audio,plugdev,dialout
+# define env vars to be used by 1: All layered dockerfiles, 2: By docker_entrypoint.sh
+ENV ROS_DISTRO          foxy
+ENV ROS_INSTALL_DIR     /opt/ros/${ROS_DISTRO}
+ENV DOCKER_USER         ${DOCKER_USER}
+ENV HOME_DOCKER_USER    /home/${DOCKER_USER}
+# ros2_ws should be utilized for ros2 components only.
+ENV ROS2_WS             ${HOME_DOCKER_USER}/ros2_ws
+# workspace folder is for intel components and for user playground.
+ENV WORKSPACE_DIR       ${HOME_DOCKER_USER}/workspace
+ENV DATA_SAMPLES_DIR    ${HOME_DOCKER_USER}/data_samples
+ENV MEDIA_SAMPLES_DIR   ${DATA_SAMPLES_DIR}/media_samples
+## ENV-Vars END ##
+
+## User creation START ##
+SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
+USER root
+RUN useradd --create-home --shell /bin/bash --gid root --uid ${DOCKER_USER_UID}                 \
+        --groups ${DOCKER_USER_GROUPS} ${DOCKER_USER}                                           \
+    && passwd -d root                                                                           \
+    && passwd -d ${DOCKER_USER}                                                                 \
+    && echo "${DOCKER_USER}  ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/${DOCKER_USER}   \
+    && mkdir -p $ROS2_WS                                                                        \
+    && mkdir -p $ROS2_WS/src                                                                    \
+    && mkdir -p ${DATA_SAMPLES_DIR}                                                             \
+    && mkdir -p ${MEDIA_SAMPLES_DIR}
+COPY artifacts/01_amr/multimedia/* ${MEDIA_SAMPLES_DIR}/
+RUN chmod 777 -R ${MEDIA_SAMPLES_DIR} \
+    && mkdir -p ${WORKSPACE_DIR}
+## User creation END ##
+################################# User-n-ENV-Setup  END #####################################

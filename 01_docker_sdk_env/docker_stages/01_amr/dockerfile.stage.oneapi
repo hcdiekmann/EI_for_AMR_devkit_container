@@ -1,0 +1,83 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# OneAPI-Copy START #################################
+ARG INTEL_ONEAPI_DIR=/opt/intel/oneapi
+RUN mkdir -p ${INTEL_ONEAPI_DIR}
+COPY --from=oneapi_base ${INTEL_ONEAPI_DIR} ${INTEL_ONEAPI_DIR}
+################################# OneAPI-Copy END #################################
+
+
+
+################################# Install oneAPI START #############################
+ARG DEBIAN_FRONTEND=noninteractive
+ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+# configure the repository
+ARG repo=https://apt.repos.intel.com/oneapi
+
+RUN sed -e '/focal-updates main restricted/ s/^#*/#/' -i /etc/apt/sources.list                                          \
+    && apt-get update -y                                                                                                \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-downgrades --no-install-recommends -o=Dpkg::Use-Pty=0  \
+        opencl-headers                                                                                                  \
+        ocl-icd-dev                                                                                                     \
+        clinfo                                                                                                          \
+    && wget -qO - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2023.PUB | apt-key add -     \
+    && echo "deb $repo all main" > /etc/apt/sources.list.d/oneAPI.list                                                  \
+    && apt-get update -y                                                                                                \
+    && apt-get install -y --no-install-recommends -o=Dpkg::Use-Pty=0                                                    \
+        intel-oneapi-dpcpp-ct=${ONEAPI_DPCPP_CT_VERSION}*                                                               \
+    && rm -rf /var/lib/apt/lists/*                                                                                      \
+    && echo 'deb [trusted=yes arch=amd64] https://repositories.intel.com/graphics/ubuntu focal main'                   \
+        > /etc/apt/sources.list.d/intel-graphics.list                                                                   \
+    && wget -qO - https://repositories.intel.com/graphics/intel-graphics.key | apt-key add -                            \
+    && apt-get update -y --allow-unauthenticated                                                                        \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends -o=Dpkg::Use-Pty=0                     \
+        level-zero=${LEVEL_ZERO_VERSION}                                                                                \
+        level-zero-dev=${LEVEL_ZERO_VERSION}                                                                          \
+    && apt-get install -y gpg-agent wget                                                                                \
+    && apt-get update                                                                                                   \
+    && apt-get install -y                                                                                               \
+        intel-opencl-icd                                                                                                \
+        intel-level-zero-gpu                                                                                            \
+        intel-media-va-driver-non-free                                                                                  \
+        libmfx1                                                                                                         \
+        libigc-dev                                                                                                      \
+        intel-igc-cm                                                                                                    \
+        libigdfcl-dev                                                                                                   \
+        libigfxcmrt-dev                                                                                                 \
+        level-zero-dev                                                                                                  \
+        ocl-icd-opencl-dev                                                                                              \
+    && rm -rf /var/lib/apt/lists/*
+################################ oneAPI base toolkit END ################################
+
+################################ C for Metal START ################################
+WORKDIR ${WORKSPACE_DIR}
+RUN wget ${C_FOR_METAL_DOWNLOAD_URL}/${C_FOR_METAL_VERSION_ZIP}                                                         \
+    && unzip ${C_FOR_METAL_VERSION_ZIP}                                                                                 \
+    && rm ${C_FOR_METAL_VERSION_ZIP}
+################################ C for Metal END ################################
+
+############################# ORB EXTRACTOR START ##################################
+# Copy orb-extractor libs
+COPY artifacts/01_amr/amr_orb_extractor/install/* ${WORKSPACE_DIR}/lib/orb_extractor/
+RUN chmod +x -R ${ROS2_WS}/install/
+############################# ORB EXTRACTOR END ####################################

@@ -1,0 +1,58 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+version: '3.9'
+# More volumes/environment etc  can be added in the importer yml file directly by using normal yml syntax
+services:
+  common:
+    environment:
+      DISPLAY:  "${DISPLAY:?                                                                                            \
+                  \n\n\n\n!!!!!!!!ERROR                                                                                 \
+                  \n There are AMR-SDK use-cases in which GUI apps are launched.                                        \
+                  \n For those apps, DISPLAY should be set properly beforehand.                                         \
+                  \n If it is not set, GUI apps will not launch inside container.                                       \
+                  \n If your use-case does not need GUI apps, then please run command export DISPLAY=0:0 to set a dummy \
+                  \n and then please run the script again.                                                              \
+                  \n\n Exiting!!!!!!!!!!!!!!\n\n\n\n\n                                                                  \
+                }"
+      QT_X11_NO_MITSHM: 1
+    security_opt:
+      - apparmor:unconfined
+    group_add:
+      - ${DOCKER_GROUP_ID:? Please set the var in shell's env.}
+    hostname: ${DOCKER_HOSTNAME:? Please set the var in shell's env.}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME:? User's HOME is not set}:/home/${USER:? Please set the var in shell's env.}:rw
+      - ${HOME:? User's HOME is not set}/.cache:/.cache:rw
+      - /etc/ssh/:/etc/ssh/:ro
+      - /usr/share/ca-certificates:/usr/share/ca-certificates:ro
+      - /usr/local/share/ca-certificates:/usr/local/share/ca-certificates:ro
+      - /dev:/dev:ro
+      - /lib/modules:/lib/modules:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /run/user:/run/user:ro
+      - /var/run/nscd/socket:/var/run/nscd/socket:ro
+      - /tmp:/tmp:rw
+    privileged: true
+    build:
+      context: ${CONTEXT_DIR:-..}
+      dockerfile: ./Dockerfile
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+    network_mode: "host"
+    extends:
+      file:  ./${CHOOSE_USER:? Please set the var in shell's env.}.yml # Please define CHOOSE_USER to (eiforamr/root/local) in .env file or from cmd line.}
+      service: user

@@ -1,0 +1,26 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  gstreamer:
+    image: ${REPO_URL}amr-gstreamer:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}gstreamer
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file: ../common/common.yml
+      service: common
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: gstreamer
+    restart: "no"
+    network_mode: host
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       echo "******* Run gst-launch with audio sample from the Docker container *******"
+       gst-launch-1.0 filesrc location=/home/eiforamr/data_samples/media_samples/sample.ogg ! oggdemux ! vorbisdec ! audioconvert ! audioresample ! testsink

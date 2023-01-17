@@ -1,0 +1,44 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################# fdo-client app START #####################################
+WORKDIR ${WORKSPACE_DIR}/fdo
+ENV PATH=${PATH}:${WORKSPACE_DIR}/fdo/openssl/lib
+
+COPY --from=fdo-client-builder /fdo/outpackage ${WORKSPACE_DIR}/fdo/
+COPY artifacts/01_amr/amr_fdo/run_fdo_DI_TO1_TO2.sh artifacts/01_amr/amr_fdo/device.config ${WORKSPACE_DIR}/fdo/
+
+RUN ln -s ${WORKSPACE_DIR}/fdo/openssl/bin/openssl /usr/bin/openssl \
+    && ln -s ${WORKSPACE_DIR}/fdo/openssl/lib/* /usr/local/lib/ \
+    && ln -s ${WORKSPACE_DIR}/fdo/python/python /usr/bin/python3 \
+    && ln -s ${WORKSPACE_DIR}/fdo/python/Lib/* /usr/local/lib/ \
+    && ldconfig
+
+RUN apt-get update                                                                        \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y                                  \
+       curl                                                                               \
+       dmidecode                                                                          \
+       python3                                                                            \
+       python3-pip                                                                        \
+       cron                                                                               \
+    && pip3 install pysftp kubernetes paho-mqtt                                           \
+    && curl -SL "https://github.com/docker/compose/releases/download/v2.5.0/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose 
+
+RUN mkdir -p /etc/kubernetes/pki
+
+RUN mkdir -p /root/.ssh
+
+CMD ["bash", "run_fdo_DI_TO1_TO2.sh"]
+################################# fdo-client app END ######################################

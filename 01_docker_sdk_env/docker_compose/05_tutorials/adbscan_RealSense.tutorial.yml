@@ -1,0 +1,40 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  realsense:
+    image: ${REPO_URL}amr-realsense:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}realsense
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: realsense
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source /home/eiforamr/workspace/ros_entrypoint.sh
+       ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_sync:=true init_reset:=true pointcloud.enable:=true
+
+  adbscan:
+    image: ${REPO_URL}amr-adbscan:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}adbscan
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: adbscan
+    depends_on:
+      - realsense
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source /home/eiforamr/workspace/ros_entrypoint.sh
+       # Start adbscan application with RealSense as point cloud source
+       ros2 run adbscan_ros2 adbscan_sub --ros-args --params-file ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/param/adbscan_RS_params.yaml &
+       # Run Rviz application to display adbscan /scan and /marker_array topics
+       ros2 run rviz2 rviz2 -d ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/config/adbscan_RS_config.rviz

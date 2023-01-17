@@ -1,0 +1,88 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+##   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+services:
+
+  turtlebot3:
+    image: ${REPO_URL}amr-turtlebot3:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlebot3
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+
+      target: turtlebot3
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        export GAZEBO_MODEL_PATH=/home/eiforamr/ros2_ws/install/turtlebot3_gazebo/share/turtlebot3_gazebo/models/
+        TURTLEBOT3_MODEL=waffle ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+
+  rtabmap:
+    image: ${REPO_URL}amr-rtabmap:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}rtabmap
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: rtabmap
+    depends_on:
+      - turtlebot3
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 10
+        ros2 launch rtabmap_ros turtlebot3_scan.launch.py use_sim_time:=true
+
+  nav2:
+    image: ${REPO_URL}amr-nav2:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}nav2
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: nav2
+    depends_on:
+      - rtabmap
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 15
+        ros2 launch nav2_bringup navigation_launch.py use_sim_time:=true params_file:=${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/param/gazebo_nav.param.yaml
+
+  # vda5050-ros2-bridge:
+  #   image: ${REPO_URL}amr-vda5050-ros2-bridge:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda5050-ros2-bridge
+  #   extends:
+  #     file:  ../common/container-launch-env.yml
+  #     service: container-launch-env
+  #   build:
+  #     target: vda5050-ros2-bridge
+  #   volumes:
+  #     - /etc/amr/certs:/etc/amr/certs
+  #   command:
+  #   - |
+  #     source source_prebuilt_components.sh
+  #     export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+  #     sleep 10
+  #     ros2 run vda5050_ros2_bridge vda_ros2_bridge
+
+  vda-navigator:
+    image: ${REPO_URL}amr-vda-navigator:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda-navigator
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: vda-navigator
+    depends_on:
+      - rtabmap
+    command:
+      - |
+        source source_prebuilt_components.sh
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 20
+        ros2 run vda_navigator vda_navigator
+

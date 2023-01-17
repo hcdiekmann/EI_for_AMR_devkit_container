@@ -1,0 +1,46 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  ##########################################
+
+
+
+################################### AAEON ros-interface START  #########################################
+WORKDIR ${ROS2_WS}
+RUN git clone ${ROS_TRANSPORT_DRIVERS_REPO} src/transport_drivers     \
+    && cd src/transport_drivers                                       \
+    && git checkout ${ROS_TRANSPORT_DRIVERS_COMMIT_ID}                \
+    && cd ${ROS2_WS}                                                  \
+    && apt-get update                                                 \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y              \
+        ros-${ROS_DISTRO}-joint-state-publisher                       \
+    && rosdep update                                                  \
+    && rosdep install --from-paths src --ignore-src -r -y             \
+    && source ${ROS_INSTALL_DIR}/setup.bash                           \
+    && colcon build                                                   \
+    && git clone ${AAEON_ROS_INTERFACE_REPO} src/ros2_amr_interface   \
+    && cd src/ros2_amr_interface                                      \
+    && git checkout ${AAEON_ROS_INTERFACE_COMMIT_ID}                  \
+    && cd ${ROS2_WS}                                                  \
+    && apt-get update                                                 \
+    && rosdep update                                                  \
+    && rosdep install --from-paths src --ignore-src -r -y             \
+    && colcon build                                                   \
+    && rm -rf ${ROS2_WS}/build/* ${ROS2_WS}/src/* ${ROS2_WS}/log/*    \
+    && rm -rf /var/lib/apt/lists/*
+    ################################### AAEON ros-interface END  #########################################

@@ -1,0 +1,73 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+################################# Realsense ROS2 Wrapper START ##################################
+
+## realsense ROS2-wrapper from src
+WORKDIR ${ROS2_WS}
+# needed by command - rosdep init
+ARG ROSDEP_SOURCE_PATH="/tmp/"
+RUN apt-get update && apt-get install --no-install-recommends -q -y                             \
+        libusb-1.0-0-dev                                                                        \
+        libglfw3-dev                                                                            \
+        libgl1-mesa-dev                                                                         \
+        libglu1-mesa-dev                                                                        \
+        ros-${ROS_DISTRO}-diagnostic-updater                                                    \
+        ros-${ROS_DISTRO}-cv-bridge                                                             \
+        ros-${ROS_DISTRO}-image-transport                                                       \
+        ros-${ROS_DISTRO}-image-geometry                                                        \
+        ros-${ROS_DISTRO}-depthimage-to-laserscan                                               \
+    && mkdir -p src && cd src                                                                   \
+    && git clone ${ROS_REALSENSE_REPO_URL} -b ${ROS_REALSENSE_RELEASE_TAG}                      \
+    && cd ${ROS2_WS}                                                                            \
+    && rosdep init                                                                              \
+    && rosdep fix-permissions                                                                   \
+    && rosdep update --include-eol-distros                                                      \
+    && source ${ROS_INSTALL_DIR}/setup.sh                                                       \
+    && colcon build                                                                             \
+    && rm -rf /var/lib/apt/lists/* && rm -rf ${ROS2_WS}/build/* ${ROS2_WS}/src/* ${ROS2_WS}/log/*
+
+################################# Realsense ROS2 Wrapper END ####################################
+
+
+# Below plugin has hard dependency on realsense2, so it can not be moved to gstreamer.dockerfile
+############## Realsense Gstreamer plugin START #################################################################################################
+WORKDIR /tmp
+RUN mkdir gst-r-src                                                                                                                             \
+    && cd gst-r-src/                                                                                                                            \
+    && git clone ${LIBREALSENSE_GSTREAMER_REPO_URL}                                                                                             \
+    && wget https://github.com/mesonbuild/meson/archive/refs/tags/${MESON_VERSION}.tar.gz                                                       \
+    && tar xf ${MESON_VERSION}.tar.gz                                                                                                           \
+    && cd realsense-gstreamer/ && git checkout ${LIBREALSENSE_GSTREAMER_COMMIT_ID}                                                              \
+    && sed -i 's/const auto exposure = static_cast<uint>(frame_set.get_frame_metadata(RS2_FRAME_METADATA_ACTUAL_EXPOSURE));/const auto exposure \
+    = static_cast<uint>(50);/g' src/gstrealsensesrc.cpp                                                                                         \
+    && apt-get update                                                                                                                           \
+    && apt-get install -y --no-install-recommends                                                                                               \
+        libgstreamer-plugins-base1.0-dev                                                                                                        \
+        ninja-build                                                                                                                             \
+    && ../meson-${MESON_VERSION}/meson.py . build                                                                                               \
+    && ninja -C build install                                                                                                                   \
+    && ln -s /usr/local/lib/x86_64-linux-gnu/gstreamer-1.0/libgstrealsensesrc.so /usr/lib/x86_64-linux-gnu/gstreamer-1.0/libgstrealsensesrc.so  \
+    && ln -s /usr/local/lib/x86_64-linux-gnu/libgstrealsense_meta.so /usr/lib/x86_64-linux-gnu/libgstrealsense_meta.so                          \
+    && cd ../..                                                                                                                                 \
+    && rm -Rf gst-r-src                                                                                                                         \
+    && rm -rf /var/lib/apt/lists/*
+############## Realsense Gstreamer plugin END ##################################################################################################

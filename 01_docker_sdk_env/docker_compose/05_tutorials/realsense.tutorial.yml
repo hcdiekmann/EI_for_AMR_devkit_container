@@ -1,0 +1,45 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  realsense:
+    image: ${REPO_URL}amr-realsense:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}realsense
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file: ../common/common.yml
+      service: common
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: realsense
+    restart: "no"
+    volumes:
+      - ../../artifacts/01_amr/amr_generic/config:/tmp/ug_configs
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       echo "******* Launch ROS nodes for the camera: *******"
+       sleep 2
+       ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true &
+       sleep 2
+       echo "******* Check the ROS2 realsense topic list ********"
+       sleep 2
+       ros2 topic list
+       sleep 2
+       echo "******* Check RealSense topics are publishing data *******"
+       sleep 2
+       timeout 1s ros2 topic echo /camera/color/image_raw
+       sleep 2
+       echo "******* Check data from the Intel® RealSense™ camera (data coming at FPS) *******"
+       timeout 10s ros2 topic hz /camera/color/image_raw
+       sleep 2
+       echo "******* Open rviz2 and check that the image from the Intel® RealSense™ camera is displayed in rviz2 *******"
+       sleep 2
+       rviz2 -d /tmp/ug_configs/realsense_config.rviz

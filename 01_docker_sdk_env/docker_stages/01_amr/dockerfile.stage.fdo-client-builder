@@ -1,0 +1,93 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################# fdo-client-build START #####################################
+WORKDIR /fdo
+
+RUN apt-get update                                                                        \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y                                  \
+       python-setuptools                                                                  \
+       clang-format                                                                       \
+       dos2unix                                                                           \
+       ruby                                                                               \
+       git                                                                                \
+       libglib2.0-dev                                                                     \
+       libpcap-dev                                                                        \
+       autoconf                                                                           \
+       libtool                                                                            \
+       libproxy-dev                                                                       \
+       libmozjs-52-0                                                                      \
+       doxygen                                                                            \
+       cmake                                                                              \
+       gcc                                                                                \
+       g++                                                                                \
+       make                                                                               \
+       libssl-dev                                                                         \
+       mercurial                                                                          \
+       wget                                                                               \
+       xxd
+
+WORKDIR /fdo/tinycbor
+RUN git clone ${FDO_CLIENT_TINYCBOR_REPO_URL} /fdo/tinycbor \
+    && git checkout ${FDO_CLIENT_TINYCBOR_RELEASE_TAG}      \
+    && make
+ENV TINYCBOR_ROOT=/fdo/tinycbor
+
+WORKDIR /fdo/safestringlib
+RUN git clone ${FDO_CLIENT_SAFESTRINGLIB_REPO_URL} /fdo/safestringlib   \
+    && git checkout ${FDO_CLIENT_SAFESTRINGLIB_COMMIT_ID}               \
+    && make
+ENV SAFESTRING_ROOT=/fdo/safestringlib
+
+WORKDIR /fdo
+# Download openssl, configure it to install in destination package, then build & install
+RUN mkdir -p ./outpackage/openssl/ \
+    && wget https://www.openssl.org/source/old/1.1.1/openssl-1.1.1f.tar.gz \
+    && tar -xzvf openssl-1.1.1f.tar.gz \
+    && ./openssl-1.1.1f/config --prefix=/fdo/outpackage/openssl/ --openssldir=/fdo/outpackage/openssl/  \
+    && make -j4 ./openssl-1.1.1f && make install ./openssl-1.1.1f
+
+RUN mkdir -p ./outpackage/python \
+    && wget https://www.python.org/ftp/python/3.10.4/Python-3.10.4.tgz \
+    && tar -xzvf Python-3.10.4.tgz \ 
+    && cd ./Python-3.10.4 && ./configure --with-ensurepip=install --enable-optimizations --disable-test-modules \ 
+    && make -j4 && ./python -m ensurepip \
+    && ./python -m pip install requests -t ./Modules \
+    && cd .. \
+    && cp -r Python-3.10.4/* ./outpackage/python/
+
+WORKDIR /fdo/client-sdk-fidoiot
+RUN git clone ${FDO_CLIENT_SDK_REPO_URL} /fdo/client-sdk-fidoiot \
+    && git checkout ${FDO_CLIENT_SDK_COMMIT_ID}
+
+################################# Configure Client Binary ####################################
+RUN openssl ecparam -name prime256v1 -genkey -noout -out ./data/ecdsa256privkey.pem
+RUN echo `openssl asn1parse < ./data/ecdsa256privkey.pem | grep "HEX DUMP" | cut -d ":" -f 4` | xxd -r -p > ./data/ecdsa256privkey.dat
+
+RUN if test -z "$MANUFACTURER_PROXY" ; then echo "manufacturer proxy not set" ; else echo ${MANUFACTURER_PROXY} > ./data/mfg_proxy.dat ; fi
+RUN if test -z "$RENDEZVOUS_PROXY" ; then echo "rendezvous proxy not set" ; else echo ${RENDEZVOUS_PROXY} > ./data/rv_proxy.dat ; fi
+RUN if test -z "$OWNER_PROXY" ; then echo "owner proxy not set" ; else echo ${OWNER_PROXY} > ./data/owner_proxy.dat ; fi
+
+RUN cmake -DDA=ecdsa256 -DHTTPPROXY=false .
+RUN make -j4
+
+################################# Package Client Output #####################################
+
+WORKDIR /fdo
+
+# Move the required fdo-client data into the package for transport
+RUN mkdir -p ./outpackage/data \
+    && cp ./client-sdk-fidoiot/build/linux-client ./client-sdk-fidoiot/data/* ./outpackage/data/
+
+################################# fdo-client-build END #####################################

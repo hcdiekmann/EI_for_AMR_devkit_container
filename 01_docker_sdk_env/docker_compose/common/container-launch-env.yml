@@ -1,0 +1,53 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+version: '3.9'
+# To execute this docker-compose yml file use command:
+##   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+services:
+  container-launch-env:
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+    restart: "no"
+    env_file:
+      - ./.env
+    environment:
+      CONTAINER_BASE_PATH:  "${CONTAINER_BASE_PATH:?                                                                            \
+                              \n\n\n\n!!!!!!!!ERROR:                                                                            \
+                              \n CONTAINER_BASE_PATH must be defined to base path of container content.                         \
+                              \n The base path is required to properly reference content such as config-files, launch-files etc \
+                              which can be access inside various containers using volume-sharing..                              \
+                              \n Example:                                                                                       \
+                              \n    export CONTAINER_BASE_PATH=/home/$USER/applications.robotics.mobile.container\n\n\n\n       \
+                            }"
+      ROS_DOMAIN_ID:  "${ROS_DOMAIN_ID:?                                                                                            \
+                        \n\n\n\n!!!!!!!!ERROR:                                                                                      \
+                        \n ROS-nodes on the same ros-domain can freely discover and send messages to each other,                    \
+                        \n while ROS-nodes on different ros-domains cannot.                                                         \
+                        \n The ROS_DOMAIN_ID must be defined to an integer within range 0-101 and 215-232.                          \
+                        \n The ROS_DOMAIN_ID should be same for all the containers/nodes launched for a particular use case.        \
+                        \n The ROS_DOMAIN_ID should be 'unique' for a particular use case to avoid hinderance from other ros-nodes. \
+                        \n The default value of ROS_DOMAIN_ID is 0, but still it must be set explicitly by user.                    \
+                        \n Example:                                                                                                 \
+                        \n    # User MUST set ROS_DOMAIN_ID explicitly:                                                             \
+                        \n    export ROS_DOMAIN_ID=<value>\n\n\n\n                                                                  \
+                      }"
+    volumes:
+      - ${CONTAINER_BASE_PATH}:${CONTAINER_BASE_PATH}:rw
+    extends:
+      file:  ../common/common.yml
+      service: common

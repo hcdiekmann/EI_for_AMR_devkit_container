@@ -1,0 +1,35 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# Kudan-SLAM app START #####################################
+COPY artifacts/01_amr/amr_kudan_slam/install/ ${ROS2_WS}/install/
+# Copy orb-extractor libs - to be used by kudan-slam
+COPY artifacts/01_amr/amr_orb_extractor/install/* ${WORKSPACE_DIR}/lib/orb_extractor/
+
+RUN chmod +x -R ${WORKSPACE_DIR}/lib ${ROS2_WS}/install/                            \
+    && apt-get update -y --allow-unauthenticated                                    \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends    \
+        intel-gpu-tools                                                             \
+        intel-microcode                                                             \
+        xserver-xorg-video-intel                                                    \
+    && rm -rf /var/lib/apt/lists/*
+################################## Kudan-SLAM app END #####################################

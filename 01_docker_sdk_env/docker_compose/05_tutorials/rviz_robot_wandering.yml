@@ -1,0 +1,27 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  rviz2:
+    image: ${REPO_URL}amr-ros-base:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-base
+    env_file:
+      - ./.env
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: ros-base
+    restart: "no"
+    network_mode: host
+    command:
+    - |
+      source /opt/ros/foxy/setup.bash
+      export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+      cd ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/config/
+      rviz2 -d robot_wandering.rviz

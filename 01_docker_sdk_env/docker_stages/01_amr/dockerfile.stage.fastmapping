@@ -1,0 +1,33 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021-2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  ##########################################
+
+
+
+################################### FastMapping Build START  #########################################
+WORKDIR ${WORKSPACE_DIR}/FastMapping/src
+RUN source ${ROS_INSTALL_DIR}/setup.bash                                        \
+    # Wandering has build time dependency on rtabmap,                           \
+    # so source $ROS2_WS which has rtabmap install dir.                         \
+    && source ${ROS2_WS}/install/setup.bash                                     \
+    && colcon build --install-base ./prebuilt_fastmapping --cmake-args          \
+        -DBUILD_TESTING=OFF && rm -rf build log                                 \
+    && mkdir ${WORKSPACE_DIR}/opencv_libs                                       \
+    && cp -rf /usr/local/lib/libopencv* ${WORKSPACE_DIR}/opencv_libs/
+    ################################### FastMapping Build END  #########################################

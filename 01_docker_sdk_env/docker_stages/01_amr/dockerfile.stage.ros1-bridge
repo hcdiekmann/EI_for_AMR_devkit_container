@@ -1,0 +1,34 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2021 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################### Component version configuration START  #########################################
+#
+# Component repositories and versions are defined in docker_stages/dockerfile.component_versions
+#
+################################### Component version configuration END  #########################################
+
+
+
+################################# ros1-bridge app START #####################################
+RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' \
+    && if [[ -z "$http_proxy" ]] ; then apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80'                             \
+    --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654;                                                                    \
+    else apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --keyserver-options http-proxy="${http_proxy}"             \
+    --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654; fi                                                                 \
+    && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -q -y                       \
+        ros-${ROS_DISTRO}-ros1-bridge                                                                                       \
+        ros-${ROS_DISTRO}-rosbag2-bag-v2-plugins                                                                            \
+        ros-${ROS_DISTRO}-demo-nodes-cpp                                                                                    \
+    && rm -rf /var/lib/apt/lists/*
+################################# ros1-bridge app END #####################################

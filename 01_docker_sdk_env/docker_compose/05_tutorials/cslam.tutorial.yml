@@ -1,0 +1,37 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  collab-slam:
+    image: ${REPO_URL}amr-collab-slam:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}collab-slam
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: collab-slam
+    volumes:
+      - ../../artifacts/01_amr/amr_generic/config:/tmp/ug_configs
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+       source ros_entrypoint.sh
+       # Launch the server
+       ros2 launch univloc_server server.launch.py rviz:=true vocabulary:=/home/eiforamr/workspace/CollabSLAM/prebuilt_collab_slam_core/univloc_server/share/univloc_server/config/orb_vocab.dbow2 &
+       # Launch the first robot, Tracker 1
+       ros2 launch univloc_tracker tracker.launch.py  publish_tf:=false queue_size:=0 ID:=0 rviz:=false gui:=false use_odom:=false vocabulary:=/home/eiforamr/workspace/CollabSLAM/prebuilt_collab_slam_core/univloc_tracker/share/univloc_tracker/config/orb_vocab.dbow2 &
+       # Launch the second robot, Tracker 2
+       ros2 launch univloc_tracker tracker.launch.py camera:=camera1 publish_tf:=false queue_size:=0 ID:=1 rviz:=false gui:=false use_odom:=false vocabulary:=/home/eiforamr/workspace/CollabSLAM/prebuilt_collab_slam_core/univloc_tracker/share/univloc_tracker/config/orb_vocab.dbow2 &
+       # Launch the robot 1 bag.
+       # To simulate robots wandering around in a common area, pre-recorded ros2 bags are used.
+       cd ${CONTAINER_BASE_PATH}/01_docker_sdk_env/docker_compose/06_bags/
+       sudo chown -R eiforamr:root robot1_bag robot2_bag
+       sudo chmod -R 777 robot1_bag robot2_bag
+       ros2 bag play robot1_bag --topics /camera/aligned_depth_to_color/camera_info /camera/aligned_depth_to_color/image_raw /camera/color/camera_info /camera/color/image_raw &
+       ros2 bag play robot2_bag --remap /camera/aligned_depth_to_color/camera_info:=/camera1/aligned_depth_to_color/camera_info /camera/aligned_depth_to_color/image_raw:=/camera1/aligned_depth_to_color/image_raw /camera/color/camera_info:=/camera1/color/camera_info /camera/color/image_raw:=/camera1/color/image_raw --topics /camera/aligned_depth_to_color/camera_info /camera/aligned_depth_to_color/image_raw /camera/color/camera_info /camera/color/image_raw &
+       # Prevent the container from closing after the last bag is played
+       tail -f /dev/null

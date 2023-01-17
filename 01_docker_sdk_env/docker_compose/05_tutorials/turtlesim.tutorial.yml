@@ -1,0 +1,31 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+#   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+services:
+  ros-base:
+    image: ${REPO_URL}amr-turtlesim:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}amr-turtlesim
+    env_file:
+      - ../05_tutorials/.env
+    extends:
+      file: ../common/common.yml
+      service: common
+    build:
+      context: ${CONTEXT_DIR:-../..}
+      dockerfile: ./dockerfile.amr
+      target: ros-base
+    restart: "no"
+    network_mode: host
+    # We enter into bash shell of docker-container
+    command:
+    - |
+       echo "******* Run the turtlesim ROS 2 sample application *******"
+       ros2 run turtlesim turtlesim_node & ros2 topic list
+       echo "******* ^^Check in terminal the available topics for the turtle^^ *******"
+       # wait several seconds before running rqt
+       sleep 10
+       echo "******* Control the turtle via rqt application *******"
+       rqt

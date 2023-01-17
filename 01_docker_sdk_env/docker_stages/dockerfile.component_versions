@@ -1,0 +1,182 @@
+# INTEL CONFIDENTIAL
+
+# Copyright 2022 Intel Corporation.
+
+# This software and the related documents are Intel copyrighted materials, and
+# your use of them is governed by the express license under which they were
+# provided to you ("License"). Unless the License provides otherwise, you may
+# not use, modify, copy, publish, distribute, disclose or transmit this
+# software or the related documents without Intel's prior written permission.
+
+# This software and the related documents are provided as is, with no express
+# or implied warranties, other than those that are expressly stated in the
+# License.
+
+################################# Update instructions START #############################
+# For new component:
+#   Add repo-name, tag-name, package-versions as ARG in a separate block below
+#
+# For quarterly release:
+#   Walk through each of the entries below, retrieve the commit ID, tag, or version
+#   from the specified link as described in the comment and update the commit ID, tag,
+#   or version variable.
+#
+################################# Update instructions END #############################
+
+
+
+################################# ARG Creation START #####################################
+# FLANN is used by PCL compilation, so the version update of flann is linked to delivery of pcl-update by dev-team
+ARG FLANN_REPO_URL=https://github.com/flann-lib/flann.git
+# flann tag: 1.9.1
+ARG FLANN_COMMIT_ID=06a49513138009d19a1f4e0ace67fbff13270c69
+# pcl optimization is done on PCL version 1.12.1. The update to below tag will depend on
+# dev-team providing pcl-optimization on more recent versions of Open source pcl code.
+ARG PCL_REPO_URL=https://github.com/PointCloudLibrary/pcl.git
+# pcl tag: pcl-1.12.1
+ARG PCL_COMMIT_ID=e8ed4be802f7d0b1acff2f8b01d7c5f381190e05
+
+# Use the latest commit from master
+ARG ADBSCAN__NAV2_DYN_REPO=https://github.com/ros-planning/navigation2_dynamic.git
+ARG ADBSCAN__NAV2_DYN_SHA1=38d5a1c9e7fb41f056b9dc833d4389d53a5bf594
+
+# Use tag 1.27.5 libmbim
+ARG WWAN_5G_LIBMBIM_REPO=https://github.com/freedesktop/libmbim.git
+ARG WWAN_5G_LIBMBIM_COMMIT_ID=d2bee5753e660632ddca403f82f53422a675ffbe
+
+# Use tag 1.19.1 ModemManager
+ARG WWAN_5G_MODEM_MANAGER_REPO=https://github.com/freedesktop/ModemManager.git
+ARG WWAN_5G_MODEM_MANAGER_COMMIT_ID=683270f403bfa1c0bd70e71aeb6ef12b3dac4f86
+
+# Use the lates commit from foxy branch
+ARG IMU_TOOLS_REPO=https://github.com/CCNYRoboticsLab/imu_tools.git
+ARG IMU_TOOLS_COMMIT_ID=d28555e487e4c1278c9a2e94143dc79dcc8941bf
+
+# Sync with component owner before updating
+# ROS transport drivers tag: 1.2.0
+ARG ROS_TRANSPORT_DRIVERS_REPO=https://github.com/ros-drivers/transport_drivers.git
+ARG ROS_TRANSPORT_DRIVERS_COMMIT_ID=d3f510ce1b4be12967064d8251ebcac530921a04
+# AAEON ROS AMR INTERFACE TAG: 1.2.0
+ARG AAEON_ROS_INTERFACE_REPO=https://github.com/AAEONAEU-SW/ros2_amr_interface
+ARG AAEON_ROS_INTERFACE_COMMIT_ID=64dfb5c725034b599d450d61b837e637468c412b
+
+# Use the latest commit from master
+ARG SOPHUS_REPO_URL=https://github.com/strasdat/Sophus.git
+ARG SOPHUS_COMMIT_ID=785fef35b7d9e0fc67b4964a69124277b7434a44
+
+# Use the latest commit from the devel branch
+ARG KOBUKI_ROS_REPO_URL=https://github.com/kobuki-base/kobuki_ros.git
+ARG KOBUKI_ROS_COMMIT_ID=9105c695fa18b55e4b1a88678fbdeb0635677ee8
+
+# Use the latest commit from the devel branch
+ARG KOBUKI_ROS_IF_REPO_URL=https://github.com/kobuki-base/kobuki_ros_interfaces.git
+ARG KOBUKI_ROS_IF_COMMIT_ID=7711d4fbec13c69bcf6477ce8e446c3ccca33113
+
+# Use the latest commit from the ${ROS_DISTRO}-devel branch
+ARG NAVIGATION2_REPO_URI=https://github.com/ros-planning/navigation2.git
+ARG NAVIGATION2_COMMIT_ID=60043d4067b9dbff73be65291f5df6aaa286cc61
+
+# Use the latest release from https://github.com/opencv/opencv/releases
+ARG OPENCV_VERSION=4.5.5
+ARG OPENCV_PYTHON_VERSION=4.5.5.62
+
+# Use the latest tag from the ros2 branch
+# Remark: For the 2022.1 release, we must stick with the slightly older version
+# 3.0.1 (instead of 3.0.2) because the latest version is not compatible with the
+# outdated ROS2 Foxy packages in the ros:foxy base layer. Starting with the
+# 2022.2 release, we will upgrade the ROS2 Foxy packages in ros-base and use
+# the latest version of OpenCV ROS.
+ARG VISION_OPENCV_ROS2_REPO_URL=https://github.com/ros-perception/vision_opencv.git
+ARG VISION_OPENCV_ROS2_RELEASE_TAG=3.0.3
+
+# Use the latest release (major.minor) from https://github.com/IntelRealSense/librealsense/releases
+ARG REALSENSE_SDK_VERSION=2.50
+
+# Use the latest release tag
+ARG ROS_REALSENSE_REPO_URL=https://github.com/IntelRealSense/realsense-ros.git
+ARG ROS_REALSENSE_RELEASE_TAG=4.0.4
+
+# Use the latest commit from master
+ARG LIBREALSENSE_GSTREAMER_REPO_URL=https://github.com/WKDSMRT/realsense-gstreamer.git
+ARG LIBREALSENSE_GSTREAMER_COMMIT_ID=4c11e3d64ae67fea84db77145743db8522d3989a
+
+# Use the latest release from https://github.com/mesonbuild/meson/releases
+ARG MESON_VERSION=0.63.0
+
+# Use the latest release tag
+ARG MICRO_XRCE_DDS_AGENT_REPO_URL=https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+ARG MICRO_XRCE_DDS_AGENT_RELEASE_TAG=v2.2.0
+
+# Use the latest commit from the ros2 branch
+ARG RPLIDAR_ROS_REPO_URL=https://github.com/Slamtec/rplidar_ros.git
+ARG RPLIDAR_ROS_COMMIT_ID=5f56676005520465b88a3e441d39f86faaf3d05c
+
+# Use the latest *-foxy release tag on master
+ARG RTAB_MAP_REPO_URL=https://github.com/introlab/rtabmap.git
+ARG RTAB_MAP_RELEASE_TAG=0.20.18-foxy
+
+# Use the latest *-foxy release tag on master
+ARG RTAB_MAP_ROS_REPO_URL=https://github.com/introlab/rtabmap_ros.git
+ARG RTAB_MAP_ROS_RELEASE_TAG=0.20.18-foxy
+
+# Use the latest hotfix of the latest quarterly release (https://hub.docker.com/r/intel/oneapi-basekit/tags)
+ARG ONEAPI_VERSION=2022.2
+
+# Use the latest version of intel-oneapi-dpcpp-ct available on https://apt.repos.intel.com/oneapi
+ARG ONEAPI_DPCPP_CT_VERSION=2022.1.0
+
+# Use the latest version from "deb [trusted=yes arch=amd64] https://repositories.intel.com/graphics/ubuntu focal main"
+ARG LEVEL_ZERO_VERSION=1.7.9+i699~u20.04
+
+# Use the latest LTS release
+# See https://docs.openvino.ai/latest/openvino_docs_install_guides_installing_openvino_apt.html for
+# finding the OPENVINO_RELEASE_REVISION
+ARG OPENVINO_RELEASE_YEAR=2021
+ARG OPENVINO_RELEASE_QUARTER=4
+ARG OPENVINO_RELEASE_FIX=2
+ARG OPENVINO_RELEASE_REVISION=752
+
+# Use 0.10.0_galactic release tag, as advised by the ROS2 OpenVINO Toolkit owner
+# It is based on OpenVINO 2021.4 and is compatible with ROS2 Foxy
+ARG ROS2_OPENVINO_TOOLKIT_REPO_URL=https://github.com/intel/ros2_openvino_toolkit
+# tag: 0.10.0_galactic
+ARG ROS2_OPENVINO_TOOLKIT_COMMIT_ID=daa55359488d2d30e9dda4e1f6b5328d7cc8cc04
+
+# Use the latest commit from master
+ARG ROS2_OBJECT_MSGS_REPO_URL=https://github.com/intel/ros2_object_msgs
+ARG ROS2_OBJECT_MSGS_COMMIT_ID=7abc200d6e0c14481cfd654794c0153d2bfd5ad6
+
+# Use the latest versions from https://github.com/intel/compute-runtime/releases
+ARG INTEL_COMPUTE_RUNTIME_VERSION=22.29.23750
+ARG INTEL_GMMLIB_VERSION=22.1.3
+ARG INTEL_ZERO_GPU_VERSION=1.3.23750
+ARG INTEL_GRAPHICS_COMPILER_VERSION=1.0.11485
+
+# Use the latest release version from https://hub.docker.com/r/thingsboard/tb-postgres/tags
+ARG THINGSBOARD_POSTGRES_VERSION=3.3.4.1-CVE22965
+
+# Use the latest commit from master
+ARG FDO_CLIENT_SDK_REPO_URL=https://github.com/secure-device-onboard/client-sdk-fidoiot.git
+ARG FDO_CLIENT_SDK_COMMIT_ID=3fb4e5b499200fee53675a986639d88094f187a3
+
+# Use the latest release tag
+ARG FDO_CLIENT_TINYCBOR_REPO_URL=https://github.com/intel/tinycbor.git
+ARG FDO_CLIENT_TINYCBOR_RELEASE_TAG=v0.6.0
+
+# Use the latest verified commit from master
+ARG FDO_CLIENT_SAFESTRINGLIB_REPO_URL=https://github.com/intel/safestringlib.git
+ARG FDO_CLIENT_SAFESTRINGLIB_COMMIT_ID=245c4b8cff1d2e7338b7f3a82828fc8e72b29549
+
+# Use the latest commit from master
+ARG FDO_SERVER_REPO_URL=https://github.com/secure-device-onboard/pri-fidoiot
+ARG FDO_SERVER_COMMIT_ID=866fc333897b932b2c3feb12661bbd6d0ed3ce74
+
+# Use following Digest for ros:foxy and Ubuntu pulled from https://hub.docker.com/
+ARG ROS_FOXY_DIGEST=sha256:e3c69b153f898d03cf30778752337e1377bdbb68faa5267f32734e85abe87c1a
+ARG UBUNTU_20_04_DIGEST=sha256:fd92c36d3cb9b1d027c4d2a72c6bf0125da82425fc2ca37c414d4f010180dc19
+ARG UBUNTU_20_04_SYSTEMD_DIGEST=sha256:ee71cb57f760430fbb4f7821f8b4a259b774dafb308ab73daf12953fbf6bef80
+
+# https://01.org/c-for-metal-development-package
+ARG C_FOR_METAL_DOWNLOAD_URL=https://01.org/sites/default/files/downloads
+ARG C_FOR_METAL_VERSION_ZIP=cmsdk20211028.zip
+################################# ARG Creation END ####################################

@@ -1,0 +1,138 @@
+version: '3.9'
+# To execute this docker-compose yml file use command:
+##   docker-compose -f <file_name> up [--build] [--no-start] [--no-build] [--force-recreate / --no-recreate] [--detach]
+# For more info about options: docker-compose up --help
+
+
+# Note: static_transform_publisher parameters needs a re-adjustment based on Robot in use.
+# Note: Realsense serial-no needs to be the same in use that is at the front of the robot. Use realsense-viewer to figure out correct serial number.
+
+services:
+  # ros-base-rviz2:
+  #   image: ${REPO_URL}amr-ros-base:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-base-rviz2
+  #   extends:
+  #     file:  ../common/container-launch-env.yml
+  #     service: container-launch-env
+  #   build:
+  #     target: ros-base
+  #   command:
+  #     - |
+  #       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+  #       ros2 run rviz2 rviz2
+
+  realsense:
+    image: ${REPO_URL}amr-realsense:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}realsense
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: realsense
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 run depthimage_to_laserscan depthimage_to_laserscan_node --ros-args -p scan_time:=0.033 -p range_min:=0.1 -p range_max:=2.5 -p output_frame:=camera_depth_optical_frame1 &
+        ros2 launch realsense2_camera rs_launch.py align_depth:=true depth_module.profile:='848,480,15' rgb_camera.profile:='848,480,15' enable_infra1:=true align_depth.enable:=true enable_sync:=true init_reset:=true use_sim_time:=false
+
+  kobuki:
+    image: ${REPO_URL}amr-kobuki:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}kobuki
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: kobuki
+    depends_on:
+      - realsense
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 launch ${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/launch/kobuki_sl_node_launch.py
+
+  ros-base-camera-tf:
+    image: ${REPO_URL}amr-ros-base:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-base-camera-tf
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: ros-base
+    depends_on:
+      - kobuki
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        ros2 run tf2_ros static_transform_publisher 0.17 0 0.27 0 0 0 base_link camera_link --ros-args -p use_sim_time:=false
+
+  collab-slam:
+    image: ${REPO_URL}amr-collab-slam:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}collab-slam
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: collab-slam
+    depends_on:
+      - ros-base-camera-tf
+      - realsense
+      - kobuki
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 5
+        ros2 launch univloc_tracker collab_slam_nav.launch.py vocabulary:=/home/eiforamr/workspace/CollabSLAM/prebuilt_collab_slam_core/univloc_tracker/share/univloc_tracker/config/orb_vocab.dbow2 server_rviz:=false enable_fast_mapping:=true projection_min_z:=0.2 zmin:=0.15
+
+  nav2:
+    image: ${REPO_URL}amr-nav2:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}nav2
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: nav2
+    depends_on:
+      - ros-base-camera-tf
+    command:
+      - |
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 20
+        ros2 launch /home/eiforamr/ros2_ws/install/nav2_bringup/share/nav2_bringup/launch/navigation_launch.py use_sim_time:=false params_file:=${CONTAINER_BASE_PATH}/01_docker_sdk_env/artifacts/01_amr/amr_generic/param/pengo_nav.param.yaml
+
+  # object-detection:
+  #   image: ${REPO_URL}amr-object-detection:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}object-detection
+  #   extends:
+  #     file:  ../common/container-launch-env.yml
+  #     service: container-launch-env
+  #   build:
+  #     target: object-detection
+  #   depends_on:
+  #     - ros-base-camera-tf
+  #     - realsense
+  #     - nav2
+  #   command:
+  #     - |
+  #       export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+  #       sleep 30
+  #       ros2 run object_detection object_detection_node
+
+  wandering:
+    image: ${REPO_URL}amr-wandering:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}wandering
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: wandering
+    depends_on:
+      - ros-base-camera-tf
+      - realsense
+      - collab-slam
+      - nav2
+    command:
+      - |
+        source source_prebuilt_components.sh
+        export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 25
+        ros2 run wandering_app wandering --ros-args -p use_sim_time:=false

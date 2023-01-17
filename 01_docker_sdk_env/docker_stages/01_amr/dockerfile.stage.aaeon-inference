@@ -1,0 +1,14 @@
+WORKDIR ${ROS2_WS}
+RUN cd src                                                           \
+   && git clone https://github.com/hcdiekmann/devkit_object_detection.git        \
+   && cd devkit_object_detection \
+   && pip install -r requirements.txt \
+   && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -q -y  \
+        ros-${ROS_DISTRO}-cv-bridge \
+   && cd ${ROS2_WS} \
+   && source ${ROS_INSTALL_DIR}/setup.bash \
+   && rosdep update \
+   && rosdep install --from-paths src -y \
+   && colcon build --packages-select devkit_object_detection \
+   && . install/setup.bash \
+   && rm -rf /var/lib/apt/lists/*
