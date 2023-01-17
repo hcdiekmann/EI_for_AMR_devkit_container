@@ -1,0 +1,1 @@
+KERNEL=="battery_bridge", SUBSYSTEM=="misc", MODE:="0777", SYMLINK+="battery_bridge"
