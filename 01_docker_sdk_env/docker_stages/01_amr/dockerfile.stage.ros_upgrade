@@ -30,6 +30,12 @@ RUN apt-get update && apt-get upgrade --no-install-recommends -q -y     \
         ros-${ROS_DISTRO}-joy-linux                                     \
         ros-${ROS_DISTRO}-teleop-twist-joy                              \
         ros-${ROS_DISTRO}-twist-mux                                     \
+        ros-${ROS_DISTRO}-fastrtps                                      \
+        ros-${ROS_DISTRO}-fastrtps-cmake-module                         \
+        ros-${ROS_DISTRO}-rmw-fastrtps-cpp                              \                
+        ros-${ROS_DISTRO}-rmw-fastrtps-shared-cpp                       \
+        ros-${ROS_DISTRO}-rosidl-typesupport-fastrtps-c                 \
+        ros-${ROS_DISTRO}-rosidl-typesupport-fastrtps-cpp               \
     && DEBIAN_FRONTEND=noninteractive apt-get install                   \
         --no-install-recommends -q -y --allow-downgrades                \
         apt-utils                                                       \

@@ -249,6 +249,10 @@ FROM ros-base AS aaeon-inference
 INCLUDE+ docker_stages/01_amr/dockerfile.stage.aaeon-inference
 INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
 
+FROM ros-base AS dashboards
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.dashboards
+INCLUDE+ docker_stages/01_amr/dockerfile.stage.entrypoint
+
 ################################# aaeon-amr-interface stage START ####################################
 FROM base-sdk AS aaeon-amr-interface-builder
 INCLUDE+ docker_stages/01_amr/dockerfile.stage.aaeon-amr-interface

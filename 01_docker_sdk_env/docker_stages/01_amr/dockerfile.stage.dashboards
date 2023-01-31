@@ -1,0 +1,6 @@
+WORKDIR ${ROS2_WS}
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -q -y  \
+        ros-${ROS_DISTRO}-rosbridge-suite \
+    && mkdir -p src && cd src \
+    && git clone https://github.com/dheera/rosboard.git 
