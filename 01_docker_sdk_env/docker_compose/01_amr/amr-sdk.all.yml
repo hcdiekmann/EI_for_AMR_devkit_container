@@ -157,43 +157,43 @@ services:
     command: ['echo fastmapping run finished.']
 
 
-  fdo-client:
-    image: ${REPO_URL}amr-fdo-client:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fdo-client
-    build:
-      context: ${CONTEXT_DIR:-../..}
-      dockerfile: ./dockerfile.amr
-      target: fdo-client
+  # fdo-client:
+  #   image: ${REPO_URL}amr-fdo-client:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}fdo-client
+  #   build:
+  #     context: ${CONTEXT_DIR:-../..}
+  #     dockerfile: ./dockerfile.amr
+  #     target: fdo-client
 
 
-  fleet-management:
-    image: ${REPO_URL}amr-fleet-management:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}fleet-management
-    build:
-      context: ${CONTEXT_DIR:-../..}
-      dockerfile: ./dockerfile.amr
-      target: fleet-management
+  # fleet-management:
+  #   image: ${REPO_URL}amr-fleet-management:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}fleet-management
+  #   build:
+  #     context: ${CONTEXT_DIR:-../..}
+  #     dockerfile: ./dockerfile.amr
+  #     target: fleet-management
 
-  gazebo:
-    image: ${REPO_URL}amr-gazebo:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}gazebo
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: gazebo
-    command: ['echo gazebo run finished.']
+  # gazebo:
+  #   image: ${REPO_URL}amr-gazebo:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}gazebo
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: gazebo
+  #   command: ['echo gazebo run finished.']
 
 
-  gstreamer:
-    image: ${REPO_URL}amr-gstreamer:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}gstreamer
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: gstreamer
-    command: ['echo gstreamer run finished.']
+  # gstreamer:
+  #   image: ${REPO_URL}amr-gstreamer:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}gstreamer
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: gstreamer
+  #   command: ['echo gstreamer run finished.']
 
 
   imu-tools:
@@ -207,26 +207,26 @@ services:
     command: ['echo imu-tools run finished.']
 
 
-  kobuki:
-    image: ${REPO_URL}amr-kobuki:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}kobuki
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: kobuki
-    command: ['echo kobuki run finished.']
+  # kobuki:
+  #   image: ${REPO_URL}amr-kobuki:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}kobuki
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: kobuki
+  #   command: ['echo kobuki run finished.']
 
 
-  kudan-slam:
-    image: ${REPO_URL}amr-kudan-slam:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}kudan-slam
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: kudan-slam
-    command: ['echo kudan-slam run finished.']
+  # kudan-slam:
+  #   image: ${REPO_URL}amr-kudan-slam:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}kudan-slam
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: kudan-slam
+  #   command: ['echo kudan-slam run finished.']
 
 
   nav2:
@@ -262,48 +262,48 @@ services:
     command: ['echo robot-localization run finished.']
 
 
-  ros-arduino:
-    image: ${REPO_URL}amr-ros-arduino:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-arduino
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: ros-arduino
-    command: ['echo ros-arduino run finished.']
+  # ros-arduino:
+  #   image: ${REPO_URL}amr-ros-arduino:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros-arduino
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: ros-arduino
+  #   command: ['echo ros-arduino run finished.']
 
 
-  ros1-bridge:
-    image: ${REPO_URL}amr-ros1-bridge:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros1-bridge
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: ros1-bridge
-    command: ['echo ros1-bridge run finished.']
+  # ros1-bridge:
+  #   image: ${REPO_URL}amr-ros1-bridge:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros1-bridge
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: ros1-bridge
+  #   command: ['echo ros1-bridge run finished.']
 
 
-  ros2-openvino:
-    image: ${REPO_URL}amr-ros2-openvino:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros2-openvino
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: ros2-openvino
-    command: ['echo ros2-openvino run finished.']
+  # ros2-openvino:
+  #   image: ${REPO_URL}amr-ros2-openvino:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}ros2-openvino
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: ros2-openvino
+  #   command: ['echo ros2-openvino run finished.']
 
 
-  rplidar:
-    image: ${REPO_URL}amr-rplidar:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}rplidar
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: rplidar
-    command: ['echo rplidar run finished.']
+  # rplidar:
+  #   image: ${REPO_URL}amr-rplidar:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}rplidar
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: rplidar
+  #   command: ['echo rplidar run finished.']
 
 
   rtabmap:
@@ -317,61 +317,61 @@ services:
     command: ['echo rtabmap run finished.']
 
 
-  sick-nanoscan:
-    image: ${REPO_URL}amr-sick-nanoscan:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}sick-nanoscan
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: sick-nanoscan
-    command: ['echo sick-nanoscan run finished.']
+  # sick-nanoscan:
+  #   image: ${REPO_URL}amr-sick-nanoscan:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}sick-nanoscan
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: sick-nanoscan
+  #   command: ['echo sick-nanoscan run finished.']
 
 
-  slam-toolbox:
-    image: ${REPO_URL}amr-slam-toolbox:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}slam-toolbox
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: slam-toolbox
-    command: ['echo slam-toolbox run finished.']
+  # slam-toolbox:
+  #   image: ${REPO_URL}amr-slam-toolbox:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}slam-toolbox
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: slam-toolbox
+  #   command: ['echo slam-toolbox run finished.']
 
 
-  turtlebot3:
-    image: ${REPO_URL}amr-turtlebot3:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlebot3
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: turtlebot3
-    command: ['echo turtlebot3 run finished.']
+  # turtlebot3:
+  #   image: ${REPO_URL}amr-turtlebot3:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlebot3
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: turtlebot3
+  #   command: ['echo turtlebot3 run finished.']
 
 
-  turtlesim:
-    image: ${REPO_URL}amr-turtlesim:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlesim
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: turtlesim
-    command: ['echo turtlesim run finished.']
+  # turtlesim:
+  #   image: ${REPO_URL}amr-turtlesim:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}turtlesim
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: turtlesim
+  #   command: ['echo turtlesim run finished.']
 
 
-  vda5050-ros2-bridge:
-    image: ${REPO_URL}amr-vda5050-ros2-bridge:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda5050-ros2-bridge
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: vda5050-ros2-bridge
-    volumes:
-      - /etc/amr/certs:/etc/amr/certs
-    command: ['echo vda5050-ros2-bridge run finished.']
+  # vda5050-ros2-bridge:
+  #   image: ${REPO_URL}amr-vda5050-ros2-bridge:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda5050-ros2-bridge
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: vda5050-ros2-bridge
+  #   volumes:
+  #     - /etc/amr/certs:/etc/amr/certs
+  #   command: ['echo vda5050-ros2-bridge run finished.']
 
 
   wandering:
@@ -384,23 +384,23 @@ services:
       target: wandering
     command: ['echo wandering run finished.']
 
-  vda-navigator:
-    image: ${REPO_URL}amr-vda-navigator:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda-navigator
-    extends:
-      file: ./amr-sdk.all.yml
-      service: ros-base
-    build:
-      target: vda-navigator
-    command: ['echo vda-navigator run finished.']
+  # vda-navigator:
+  #   image: ${REPO_URL}amr-vda-navigator:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}vda-navigator
+  #   extends:
+  #     file: ./amr-sdk.all.yml
+  #     service: ros-base
+  #   build:
+  #     target: vda-navigator
+  #   command: ['echo vda-navigator run finished.']
 
-  wwan-5g-modem:
-    image: ${REPO_URL}amr-wwan-5g-modem:${DOCKER_TAG:-latest}
-    container_name: ${CONTAINER_NAME_PREFIX:-amr-}wwan-5g-modem
-    build:
-      context: ${CONTEXT_DIR:-../..}
-      dockerfile: ./dockerfile.amr
-      target: wwan-5g-modem
+  # wwan-5g-modem:
+  #   image: ${REPO_URL}amr-wwan-5g-modem:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}wwan-5g-modem
+  #   build:
+  #     context: ${CONTEXT_DIR:-../..}
+  #     dockerfile: ./dockerfile.amr
+  #     target: wwan-5g-modem
 
   aaeon-inference:
     image: ${REPO_URL}amr-aaeon-inference:${DOCKER_TAG:-latest}
@@ -411,5 +411,15 @@ services:
     build:
       target: aaeon-inference
     command: ['echo aaeon inference run finished.']
+
+  dashboards:
+    image: ${REPO_URL}amr-dashboards:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}dashboards
+    extends:
+      file: ./amr-sdk.all.yml
+      service: ros-base
+    build:
+      target: dashboards
+    command: ['echo dashboards run finished.']
 
       

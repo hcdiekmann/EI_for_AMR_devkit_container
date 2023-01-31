@@ -166,3 +166,30 @@ services:
         export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
         sleep 35
         ros2 run wandering_app wandering --ros-args -p use_sim_time:=false
+
+
+  # aaeon-inference:
+  #   image: ${REPO_URL}amr-aaeon-inference:${DOCKER_TAG:-latest}
+  #   container_name: ${CONTAINER_NAME_PREFIX:-amr-}aaeon-inference
+  #   extends:
+  #     file:  ../common/container-launch-env.yml
+  #     service: container-launch-env
+  #   build:
+  #     target: aaeon-inference
+  #   command:
+  #     - |
+  #       ros2 run devkit_object_detection detection_node
+
+    
+  dashboards:
+    image: ${REPO_URL}amr-dashboards:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}dashboards
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: dashboards
+    command:
+      - |
+        ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+

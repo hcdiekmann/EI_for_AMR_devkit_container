@@ -166,6 +166,18 @@ services:
     command:
       - |
         export ROS_DOMAIN_ID=${ROS_DOMAIN_ID}
+        sleep 20
         ros2 run devkit_object_detection detection_node
 
+  dashboards:
+    image: ${REPO_URL}amr-dashboards:${DOCKER_TAG:-latest}
+    container_name: ${CONTAINER_NAME_PREFIX:-amr-}dashboards
+    extends:
+      file:  ../common/container-launch-env.yml
+      service: container-launch-env
+    build:
+      target: dashboards
+    command:
+      - |
+        ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 
